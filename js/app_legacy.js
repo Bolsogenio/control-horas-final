@@ -1357,7 +1357,12 @@ function cerrarModalJornada() {
 
 
 // Inicializar listeners del modal (1 sola vez)
-window.addEventListener("DOMContentLoaded", () => {
+
+// ===============================
+// LEGACY INIT (migrado a init único)
+// ===============================
+export function legacyInit() {
+
 
   // ===============================
   // Reiniciar (solo UI, no guarda)
@@ -1790,8 +1795,11 @@ window._psBindCrearPersona = function _psBindCrearPersona() {
 
   // Exponer para usarlo al abrir el modal
   window._mj_aplicarUIporTipo = aplicarUIporTipo;
-});
 
+}
+
+// (Opcional) exponer para debug manual
+window.legacyInit = legacyInit;
 
 // ==========================
 // UI MINIMA - SELECTOR PERSONA
