@@ -1,3 +1,4 @@
+import { Storage } from "./infra/storage.js";
 
 function MAX_HORAS_DIA() {
   return 9;
@@ -483,48 +484,45 @@ const DIA_DEFAULT = () => (ES_SOLO_SUP()
 
 function cargarPersonas() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const state = Storage.loadPersonasState();
 
-    // --- Caso 1: storage vacío ---
-// Si no hay datos en el storage nuevo, NO crear Persona 1 automáticamente.
-// Solo migramos desde el esquema viejo si existen jornadas viejas reales.
-if (!raw) {
-  const legacyRaw = localStorage.getItem("control-horas-jornadas");
-  const legacyJornadas = legacyRaw ? JSON.parse(legacyRaw) : [];
+    // --- Caso 1: storage nuevo vacío ---
+    // Si no hay datos en el storage nuevo, NO crear Persona 1 automáticamente.
+    // Solo migramos desde el esquema viejo si existen jornadas viejas reales.
+    if (!state) {
+      const legacyJornadas = Storage.loadLegacyJornadas();
 
-  if (Array.isArray(legacyJornadas) && legacyJornadas.length > 0) {
-    personas = {
-      p1: {
-        nombre: "Persona 1",
-        categoria: "CS",
-        perfil: {
-          horasPorDia: MAX_HORAS_DIA(),
-          libresPorQuincena: MAX_LIBRES_QUINCENA(),
-          topeQuincena: HORAS_QUINCENA(),
-        },
-        jornadas: legacyJornadas,
-      },
-    };
+      if (Array.isArray(legacyJornadas) && legacyJornadas.length > 0) {
+        personas = {
+          p1: {
+            nombre: "Persona 1",
+            categoria: "CS",
+            perfil: {
+              horasPorDia: MAX_HORAS_DIA(),
+              libresPorQuincena: MAX_LIBRES_QUINCENA(),
+              topeQuincena: HORAS_QUINCENA(),
+            },
+            jornadas: legacyJornadas,
+          },
+        };
 
-    personaActivaId = "p1";
-    guardarPersonas();
-  } else {
-    personas = {};
-    personaActivaId = null;
-    jornadas = [];
-  }
-
-  return;
-} else {
-
-      // --- Caso 2: storage nuevo ---
-      const data = JSON.parse(raw);
-      personas = data.personas || {};
-      personaActivaId = data.personaActivaId;
-
-      if (!personaActivaId || !personas[personaActivaId]) {
-        personaActivaId = Object.keys(personas)[0] || null;
+        personaActivaId = "p1";
+        guardarPersonas();
+      } else {
+        personas = {};
+        personaActivaId = null;
+        jornadas = [];
       }
+
+      return;
+    }
+
+    // --- Caso 2: storage nuevo con datos ---
+    personas = state.personas || {};
+    personaActivaId = state.personaActivaId;
+
+    if (!personaActivaId || !personas[personaActivaId]) {
+      personaActivaId = Object.keys(personas)[0] || null;
     }
 
     // Activar persona (aplica perfil + jornadas)
@@ -555,13 +553,10 @@ function guardarPersonas() {
       personas[personaActivaId].jornadas = jornadas;
     }
 
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        personaActivaId,
-        personas,
-      })
-    );
+    Storage.savePersonasState({
+      personaActivaId,
+      personas,
+    });
   } catch (e) {
     console.error("Error guardando personas:", e);
   }
@@ -685,10 +680,7 @@ window.crearPersona = (nombre, categoria, horasPorDia, libresPorQuincena, activa
 
 function storageLoadJornadas() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const data = JSON.parse(raw);
-    return Array.isArray(data) ? data : [];
+    return Storage.loadLegacyJornadas();
   } catch (e) {
     console.error("storageLoadJornadas: error leyendo storage:", e);
     return [];
@@ -697,7 +689,7 @@ function storageLoadJornadas() {
 
 function storageSaveJornadas(jornadas) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(jornadas));
+    Storage.saveLegacyJornadas(jornadas);
     return true;
   } catch (e) {
     console.error("storageSaveJornadas: error guardando storage:", e);
