@@ -444,7 +444,7 @@ const STORAGE_KEY = "control-horas-personas";
 let personaActivaId = null;
 
 // Todas las personas
-let personas = [];
+let personas = {};
 // Alias usado por toda la app (NO cambiar el resto del código)
 let jornadas = [];
 
@@ -465,27 +465,38 @@ function cargarPersonas() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
 
-    // --- Caso 1: storage vacío → migración desde esquema viejo ---
-    if (!raw) {
-      const legacyRaw = localStorage.getItem("control-horas-jornadas");
-      const legacyJornadas = legacyRaw ? JSON.parse(legacyRaw) : [];
+    // --- Caso 1: storage vacío ---
+// Si no hay datos en el storage nuevo, NO crear Persona 1 automáticamente.
+// Solo migramos desde el esquema viejo si existen jornadas viejas reales.
+if (!raw) {
+  const legacyRaw = localStorage.getItem("control-horas-jornadas");
+  const legacyJornadas = legacyRaw ? JSON.parse(legacyRaw) : [];
 
-      personas = {
-        p1: {
-          nombre: "Persona 1",
-          categoria: "CS",
-          perfil: {
-            horasPorDia: MAX_HORAS_DIA(),
-            libresPorQuincena: MAX_LIBRES_QUINCENA(),
-            topeQuincena: HORAS_QUINCENA(),
-          },
-          jornadas: Array.isArray(legacyJornadas) ? legacyJornadas : [],
+  if (Array.isArray(legacyJornadas) && legacyJornadas.length > 0) {
+    personas = {
+      p1: {
+        nombre: "Persona 1",
+        categoria: "CS",
+        perfil: {
+          horasPorDia: MAX_HORAS_DIA(),
+          libresPorQuincena: MAX_LIBRES_QUINCENA(),
+          topeQuincena: HORAS_QUINCENA(),
         },
-      };
+        jornadas: legacyJornadas,
+      },
+    };
 
-      personaActivaId = "p1";
-      guardarPersonas();
-    } else {
+    personaActivaId = "p1";
+    guardarPersonas();
+  } else {
+    personas = {};
+    personaActivaId = null;
+    jornadas = [];
+  }
+
+  return;
+} else {
+
       // --- Caso 2: storage nuevo ---
       const data = JSON.parse(raw);
       personas = data.personas || {};
@@ -1684,69 +1695,77 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  function _psBindCrearPersona() {
-    const btn = _psEl("psCrearBtn");
-    if (!btn) return;
 
-    btn.onclick = () => {
-      _psMsg("");
 
-      const nombre = (_psEl("psNombre")?.value || "").trim();
-      if (!nombre) { _psMsg("Ingresá un nombre."); return; }
+window._psBindCrearPersona = function _psBindCrearPersona() {
+  const btn = document.getElementById("psCrearBtn");
+  if (!btn) return;
 
-      const categoria = _psEl("psCategoria")?.value || "cs";
-      const horasPorDia = _psClamp(_psEl("psHoras")?.value, 0.5, 9, 8);
-      const libresPorQuincena = _psClamp(_psEl("psLibres")?.value, 3, 12, 3);
+  const msgEl = document.getElementById("psMsg");
+  const setMsg = (t) => { if (msgEl) msgEl.textContent = t || ""; };
 
-      try {
-        // crea y activa
-        crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, true);
+  const clamp = (x, min, max, def) => {
+    const n = Number(x);
+    if (!Number.isFinite(n)) return def;
+    return Math.max(min, Math.min(max, n));
+  };
 
-        // persiste
-        guardarPersonas();
+  btn.onclick = () => {
+    setMsg("");
 
-        // UI
-        renderSelectorPersonas();
-        bindSelectorPersonas();
+    const nombre = (document.getElementById("psNombre")?.value || "").trim();
+    if (!nombre) { setMsg("Ingresá un nombre."); return; }
 
-        _psMostrarSetup(false);
+    const categoria = document.getElementById("psCategoria")?.value || "cs";
+    const horasPorDia = clamp(document.getElementById("psHoras")?.value, 0.5, 9, 8);
+    const libresPorQuincena = clamp(document.getElementById("psLibres")?.value, 3, 12, 3);
 
-        // render general
-        renderCalendar();
-        renderResumen();
-      } catch (e) {
-        console.error(e);
-        _psMsg("No se pudo crear la persona. Mirá la consola.");
-      }
-    };
-  }
+    crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, true);
+    guardarPersonas();
+
+    renderSelectorPersonas();
+    bindSelectorPersonas();
+
+    if (typeof _psMostrarSetup === "function") _psMostrarSetup(false);
+
+    renderCalendar();
+    renderResumen();
+  };
+};
+
+
+
   // =====================================
 
-  document.addEventListener("DOMContentLoaded", () => {
-    // carga personas/jornadas como siempre
-    cargarPersonas();
-    cargarJornadas();
+  // ===== INIT PERSONAS/UI (una sola vez) =====
+  cargarPersonas();
+  cargarJornadas();
 
-    // Si no hay personas, mostramos setup y NO renderizamos el calendario todavía
-    const esPersonaDefault =
-      Array.isArray(personas) &&
-      personas.length === 1 &&
-      (String(personas[0].nombre || personas[0].name || "").trim().toLowerCase() === "persona 1");
-
-    if (!Array.isArray(personas) || personas.length === 0 || esPersonaDefault) {
-
+  // Botón "+ Nueva persona" -> abre el setup SIEMPRE
+  const btnNueva = document.getElementById("btnNuevaPersona");
+  if (btnNueva) {
+    btnNueva.onclick = () => {
       _psBindCrearPersona();
       _psMostrarSetup(true);
-      return;
-    }
+      setTimeout(() => _psEl("psNombre")?.focus(), 0);
+    };
+  }
 
-    // Si hay personas, normal
+  const ids = Object.keys(personas || {});
+  const esPersonaDefault =
+    ids.length === 1 &&
+    (String(personas[ids[0]]?.nombre || "").trim().toLowerCase() === "persona 1");
+
+  if (ids.length === 0 || esPersonaDefault) {
+    _psBindCrearPersona();
+    _psMostrarSetup(true);
+  } else {
     _psMostrarSetup(false);
     renderSelectorPersonas();
     bindSelectorPersonas();
     renderCalendar();
     renderResumen();
-  });
+  }
 
   // Exponer para usarlo al abrir el modal
   window._mj_aplicarUIporTipo = aplicarUIporTipo;
@@ -1835,30 +1854,3 @@ function _mjSetInfoSuperior(jornada) {
     <div>Impacto: ${impacto}</div>
   `;
 }
-
-
-// ==========================
-// INICIO (cuando el HTML ya está cargado)
-// ==========================
-
-document.addEventListener("DOMContentLoaded", () => {
-  cargarPersonas();
-  renderSelectorPersonas();
-  bindSelectorPersonas();
-  renderHeader();
-  renderCalendar();
-  renderResumen();
-
-
-  document.getElementById("prevMonthBtn").onclick = () => changeMonth(-1);
-  document.getElementById("nextMonthBtn").onclick = () => changeMonth(1);
-  // ==========================
-  // PWA - Service Worker
-  // ==========================
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js")
-      .then(() => console.log("Service Worker registrado OK"))
-      .catch((err) => console.warn("Error registrando SW:", err));
-  }
-
-});
