@@ -1,0 +1,1877 @@
+
+function MAX_HORAS_DIA() {
+  return 9;
+}
+
+const MONTHS = [
+  "Enero", "Febrero", "Marzo", "Abril",
+  "Mayo", "Junio", "Julio", "Agosto",
+  "Septiembre", "Octubre", "Noviembre", "Diciembre"
+];
+
+
+function MAX_LIBRES_QUINCENA() {
+  return 12;
+}
+
+
+function HORAS_QUINCENA(horasPorDia = 8, libresPorQuincena = 3) {
+  const diasTrabajables = 14 - libresPorQuincena;
+  return diasTrabajables * horasPorDia;
+}
+
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth(); // 0..11
+
+let PERFIL_ACTUAL = null;
+
+const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+
+
+
+
+import {
+  ANCHOR_START as DN_ANCHOR_START,
+  addDays as dn_addDays,
+  toISODate as dn_toISODate,
+  normalizarFecha as dn_normalizarFecha,
+  normalizarNumero as dn_normalizarNumero,
+  formatearDiasHoras8 as dn_formatearDiasHoras8,
+  getTipoFromFlags as dn_getTipoFromFlags,
+
+  getQuincenaIndex as dn_getQuincenaIndex,
+  getQuincenasQueTocanMes as dn_getQuincenasQueTocanMes,
+
+  calcularTotalesRangoConAsumidos as dn_calcularTotalesRangoConAsumidos,
+  calcularResumenMensual as dn_calcularResumenMensual,
+  calcularResumenQuincenasQueTocanMes as dn_calcularResumenQuincenasQueTocanMes,
+  calcularSaldoLibresTrabajadosGlobal as dn_calcularSaldoLibresTrabajadosGlobal,
+
+  esNumeroValido as dn_esNumeroValido,
+  horasHabilitadas as dn_horasHabilitadas,
+  validarHoras as dn_validarHoras,
+  rangoQuincenaDeFechaStr as dn_rangoQuincenaDeFechaStr,
+  contarLibresEnQuincena as dn_contarLibresEnQuincena,
+  aplicarTipoAFlags as dn_aplicarTipoAFlags,
+  esNormalAsumida80 as dn_esNormalAsumida80,
+} from "./domain.js";
+
+// ==========================
+// CONFIGURACIÓN
+// ==========================
+
+
+// ==========================
+// PERFIL (reglas base del sistema)
+// ==========================
+// Importante: por ahora dejamos FULL TIME como perfil activo.
+// Este PASO 1 no cambia comportamiento, solo centraliza números.
+const PERFIL_FULL_TIME = {
+  id: "full_time",
+  nombre: "Full time (8h/día, 3 libres/quincena, 88h/quincena)",
+  maxHorasDia: 8,
+  maxLibresQuincena: 3,
+  horasQuincena: 88,
+};
+
+const PERFIL_6H_2LIBRES = {
+  id: "6h_2libres",
+  nombre: "6 hs / 2 libres",
+  maxHorasDia: 6,
+  maxLibresQuincena: 4,
+  horasQuincena: 60,
+};
+
+// ==========================
+// PRESETS DE PERFIL (para Personas)
+// ==========================
+
+const PERFIL_PRESETS = {
+  full_time: {
+    id: "full_time",
+    nombre: "Full time (8h/día, 3 libres/quincena)",
+    horasPorDia: 8,
+    libresPorQuincena: 3,
+    topeQuincena: 88, // fijo por ahora
+  },
+  "6h_2libres": {
+    id: "6h_2libres",
+    nombre: "6 hs / 2 libres",
+    horasPorDia: 6,
+    libresPorQuincena: 4, // (según tu PERFIL_6H_2LIBRES actual)
+    topeQuincena: 88, // fijo por ahora
+  },
+};
+
+
+
+
+
+// Aplica un preset a la PERSONA ACTIVA (sin UI)
+function aplicarPresetPerfilPersonaActiva(presetId) {
+  if (!personaActivaId || !personas[personaActivaId]) {
+    console.warn("No hay persona activa");
+    return false;
+  }
+
+  const preset = PERFIL_PRESETS[presetId];
+  if (!preset) {
+    console.warn("Preset inválido:", presetId);
+    return false;
+  }
+
+  const p = personas[personaActivaId];
+  if (!p.perfil) p.perfil = {};
+
+  p.perfil.horasPorDia = preset.horasPorDia;
+  p.perfil.libresPorQuincena = preset.libresPorQuincena;
+  p.perfil.topeQuincena = 88; // fijo por ahora
+
+  // Re-activar para que PERFIL_ACTUAL tome el nuevo perfil
+  activarPersona(personaActivaId, { render: true, persistir: true });
+  return true;
+}
+
+// Exponer para probar por consola
+window.aplicarPresetPerfilPersonaActiva = (presetId) =>
+  aplicarPresetPerfilPersonaActiva(presetId);
+
+window.listarPresetsPerfil = () => Object.keys(PERFIL_PRESETS);
+
+
+// Perfil activo (por ahora fijo)
+// m: 0=enero ... 10=noviembre
+
+
+
+
+
+// Devuelve todas las quincenas (14 días) que intersectan el mes visible
+
+
+
+
+
+
+function renderCalendarHeader() {
+  document.getElementById("monthLabel").textContent =
+    `${MONTHS[calMonth]} ${calYear}`;
+
+  const wd = document.getElementById("weekdays");
+  wd.innerHTML = "";
+  WEEKDAYS.forEach(d => {
+    const div = document.createElement("div");
+    div.className = "cal-weekday";
+    div.textContent = d;
+    wd.appendChild(div);
+  });
+}
+
+
+function bindCalendarNav() {
+  const prev = document.getElementById("prevMonthBtn");
+  const next = document.getElementById("nextMonthBtn");
+  if (prev) {
+    prev.onclick = () => {
+      calMonth -= 1;
+      if (calMonth < 0) { calMonth = 11; calYear -= 1; }
+      renderCalendar();
+    };
+  }
+  if (next) {
+    next.onclick = () => {
+      calMonth += 1;
+      if (calMonth > 11) { calMonth = 0; calYear += 1; }
+      renderCalendar();
+    };
+  }
+}
+
+
+
+
+function renderResumen() {
+  const formatearDiasHoras = (h) => dn_formatearDiasHoras8(h, MAX_HORAS_DIA());
+
+  // ======================
+  // MES
+  // ======================
+  const mr = dn_calcularResumenMensual(calYear, calMonth, jornadas, MAX_HORAS_DIA(), 30);
+  const mt = mr.mt;
+  const baseMesHastaHoy = mr.baseMesHastaHoy;
+  const totalPagoM = mr.totalPagoM;
+  const descuentoM = mr.descuentoM;
+  const extraM = mr.extraM;
+  const crupierHorasM = mr.crupierHorasM;
+
+  document.getElementById("sumMonthLabel").textContent = `${MONTHS[calMonth]} ${calYear}`;
+
+  document.getElementById("sumMonthText").textContent =
+    `Sup: ${formatearDiasHoras(mt.supervisor)} (${mt.supervisor}h)` +
+    ` | Desc: ${descuentoM}h` +
+    ` | Crup: ${formatearDiasHoras(crupierHorasM)} (${crupierHorasM}h)` +
+    (extraM > 0 ? ` | Extra: ${extraM}h` : "") +
+    ` | Base hasta hoy: ${baseMesHastaHoy}h` +
+    ` | Total pago: ${totalPagoM}h`;
+
+  // ======================
+  // QUINCENAS (rodantes) que tocan el mes visible
+  // ======================
+  const quincenas = dn_calcularResumenQuincenasQueTocanMes(
+    calYear,
+    calMonth,
+    jornadas,
+    MAX_HORAS_DIA(),
+    11
+  );
+
+  document.getElementById("sumQuincenaRange").textContent =
+    `Quincenas que tocan ${MONTHS[calMonth]} ${calYear}`;
+
+  const partes = [];
+
+  for (const r of quincenas) {
+    const qt = r.qt;
+
+    const descuentoQ = r.descuentoQ;
+    const extraQ = r.extraQ;
+    const crupierHorasQ = r.crupierHorasQ;
+
+    partes.push(
+      `${formatDate(r.start)} → ${formatDate(r.end)}` +
+      ` | Sup: ${formatearDiasHoras(qt.supervisor)} (${qt.supervisor}h)` +
+      ` | Desc: ${descuentoQ}h` +
+      ` | Crup: ${formatearDiasHoras(crupierHorasQ)} (${crupierHorasQ}h)` +
+      (extraQ > 0 ? ` | Extra: ${extraQ}h` : "")
+    );
+  }
+
+  const saldoGlobal = dn_calcularSaldoLibresTrabajadosGlobal(jornadas);
+  partes.push(`Saldo de libres trabajados disponible: ${saldoGlobal.saldo}`);
+
+  document.getElementById("sumQuincenaText").textContent = partes.join(" // ");
+}
+
+
+
+function renderCalendarGrid() {
+  const grid = document.getElementById("calendarGrid");
+  grid.innerHTML = "";
+
+  const firstDay = new Date(calYear, calMonth, 1);
+  const startOffset = firstDay.getDay(); // 0 = domingo
+  const startDate = dn_addDays(firstDay, -startOffset);
+
+  for (let i = 0; i < 42; i++) {
+    const d = dn_addDays(startDate, i);
+    const cell = document.createElement("div");
+    cell.className = "cal-cell";
+
+    const qIndex = dn_getQuincenaIndex(d);
+    const qClass = "q" + (((qIndex % 3) + 3) % 3);
+    cell.classList.add(qClass);
+
+    if (d.getMonth() !== calMonth) {
+      cell.classList.add("other-month");
+    }
+
+    const num = document.createElement("div");
+    num.className = "cal-daynum";
+    num.textContent = d.getDate();
+
+    const summary = document.createElement("div");
+    summary.className = "cal-summary";
+
+    // UI (solo visual)
+    const fechaUI = formatDate(d);
+
+    // KEY real (storage / comparaciones)
+    const fechaKey = dn_toISODate(d);
+
+    const today = getToday();
+    const esFuturo = d > today;
+
+    if (!esFuturo) {
+      cell.addEventListener("click", () => {
+        let idx = jornadas.findIndex((j) => dn_normalizarFecha(j?.fecha) === fechaKey);
+
+        if (idx === -1) {
+          jornadas.push({
+            fecha: fechaKey, // ✅ ISO en storage
+            crupier: 0,
+            supervisor: 0,
+            falta: false,
+            libre: false,
+            libreTrabajado: false,
+            compensado: false,
+            licAnual: false,
+            licEnfermedad: false,
+            licSinGoce: false,
+          });
+          guardarJornadas();
+          idx = jornadas.length - 1;
+        }
+
+        abrirModalJornada(idx);
+      });
+    } else {
+      cell.classList.add("future");
+    }
+
+    const j = buscarJornadaPorFecha(fechaKey);
+
+    if (j) {
+      const tipo = dn_getTipoFromFlags(j);
+
+      const cr = Number(j.crupier) || 0;
+      const sup = Number(j.supervisor) || 0;
+
+      // Formato único para horas (NORMAL y LIBRE TRAB. parcial)
+      const fmtCS = (cr, sup) => {
+        const total = cr + sup;
+        const desc = Math.max(0, MAX_HORAS_DIA() - total);
+
+        if (ES_SOLO_SUP()) {
+          if (desc > 0) return `S:${sup} Desc:${desc}`;
+          return `S:${sup}`;
+        }
+
+        if (desc > 0) return `C:${cr} S:${sup} Desc:${desc}`;
+        return `C:${cr} S:${sup}`;
+      };
+
+      if (tipo === "falta") {
+        summary.textContent = "FALTA";
+
+      } else if (tipo === "compensado") {
+        summary.textContent = "COMP";
+
+      } else if (tipo === "libre") {
+        summary.textContent = "LIBRE";
+
+      } else if (tipo === "licAnual") {
+        summary.textContent = "LIC ANUAL";
+
+      } else if (tipo === "licEnfermedad") {
+        summary.textContent = "LIC ENF";
+
+      } else if (tipo === "licSinGoce") {
+        summary.textContent = "LIC S/GOCE";
+
+      } else if (tipo === "libreTrabajado") {
+        const total = cr + sup;
+
+        // ✅ Caso estándar (día completo): solo etiqueta
+        const def = DIA_DEFAULT();
+        if (cr === def.cr && sup === def.sup && total === MAX_HORAS_DIA()) {
+          summary.textContent = "LIBRE TRAB.";
+        } else {
+          summary.innerHTML =
+            `<span class="cal-tag">LIBRE TRAB.</span><br>` +
+            `${fmtCS(cr, sup)}`;
+        }
+
+      } else {
+        // NORMAL
+        // ✅ Si es el día completo de Supervisor (solo S), mostrar SUPER
+        if (ES_SOLO_SUP() && cr === 0 && sup === MAX_HORAS_DIA()) {
+          summary.textContent = "SUPER";
+        } else {
+          summary.textContent = fmtCS(cr, sup);
+        }
+      }
+
+    } else {
+      summary.textContent = "";
+    }
+
+    // (fechaUI no se usa acá, pero lo dejamos declarado por si más adelante
+    // querés tooltip/label; hoy no afecta nada)
+    cell.appendChild(num);
+    cell.appendChild(summary);
+    grid.appendChild(cell);
+  }
+}
+
+
+
+
+
+// ==========================
+// FUNCIONES DE FECHA
+// ==========================
+
+
+
+
+
+function formatDate(date) {
+  const d = String(date.getDate()).padStart(2, "0");
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const y = date.getFullYear();
+  return `${d}/${m}/${y}`;
+}
+
+
+
+function getToday() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function contarDiasInclusiveHastaHoy(startDate, endDate) {
+  const hoy = getToday();
+
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(endDate);
+  end.setHours(0, 0, 0, 0);
+
+  const hasta = hoy < start ? null : (hoy < end ? hoy : end);
+  if (!hasta) return 0;
+
+  const msDia = 24 * 60 * 60 * 1000;
+  return Math.floor((hasta - start) / msDia) + 1; // inclusive
+}
+
+
+
+
+
+// ==========================
+// RENDER FECHA / QUINCENA
+// ==========================
+
+function renderHeader() {
+  const today = getToday();
+  document.getElementById("todayText").textContent = formatDate(today);
+}
+
+
+
+// ==========================
+// REGISTRO DE JORNADAS (MVP)
+// ==========================
+
+// ==========================
+// PERSONAS + STORAGE
+// ==========================
+
+const STORAGE_KEY = "control-horas-personas";
+
+// Persona activa
+let personaActivaId = null;
+
+// Todas las personas
+let personas = {};
+// Alias usado por toda la app (NO cambiar el resto del código)
+let jornadas = [];
+
+// Categoría activa de la persona (CS = Crupier/Supervisor, S = solo Supervisor)
+let CATEGORIA_ACTUAL = "CS";
+const ES_SOLO_SUP = () => CATEGORIA_ACTUAL === "S";
+const DIA_DEFAULT = () => (ES_SOLO_SUP()
+  ? { cr: 0, sup: MAX_HORAS_DIA() }
+  : { cr: MAX_HORAS_DIA(), sup: 0 }
+);
+
+
+// ==========================
+// CARGA DESDE STORAGE
+// ==========================
+
+function cargarPersonas() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+
+    // --- Caso 1: storage vacío ---
+// Si no hay datos en el storage nuevo, NO crear Persona 1 automáticamente.
+// Solo migramos desde el esquema viejo si existen jornadas viejas reales.
+if (!raw) {
+  const legacyRaw = localStorage.getItem("control-horas-jornadas");
+  const legacyJornadas = legacyRaw ? JSON.parse(legacyRaw) : [];
+
+  if (Array.isArray(legacyJornadas) && legacyJornadas.length > 0) {
+    personas = {
+      p1: {
+        nombre: "Persona 1",
+        categoria: "CS",
+        perfil: {
+          horasPorDia: MAX_HORAS_DIA(),
+          libresPorQuincena: MAX_LIBRES_QUINCENA(),
+          topeQuincena: HORAS_QUINCENA(),
+        },
+        jornadas: legacyJornadas,
+      },
+    };
+
+    personaActivaId = "p1";
+    guardarPersonas();
+  } else {
+    personas = {};
+    personaActivaId = null;
+    jornadas = [];
+  }
+
+  return;
+} else {
+
+      // --- Caso 2: storage nuevo ---
+      const data = JSON.parse(raw);
+      personas = data.personas || {};
+      personaActivaId = data.personaActivaId;
+
+      if (!personaActivaId || !personas[personaActivaId]) {
+        personaActivaId = Object.keys(personas)[0] || null;
+      }
+    }
+
+    // Activar persona (aplica perfil + jornadas)
+    if (personaActivaId) {
+      activarPersona(personaActivaId, { render: false, persistir: false });
+    } else {
+      jornadas = [];
+    }
+  } catch (e) {
+    console.error("Error cargando personas:", e);
+    personas = {};
+    personaActivaId = null;
+    jornadas = [];
+  }
+}
+
+
+
+
+
+// ==========================
+// GUARDAR
+// ==========================
+
+function guardarPersonas() {
+  try {
+    if (personaActivaId && personas[personaActivaId]) {
+      personas[personaActivaId].jornadas = jornadas;
+    }
+
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        personaActivaId,
+        personas,
+      })
+    );
+  } catch (e) {
+    console.error("Error guardando personas:", e);
+  }
+}
+
+
+// ==========================
+// PERSONA ACTIVA (cambio de persona)
+// ==========================
+
+function perfilDesdePersona(p) {
+  const pf = p?.perfil || {};
+
+  // Normalizamos a la estructura que ya usa la app
+  const horasPorDia = Number(pf.horasPorDia) || 8;
+  const libresPorQuincena = Number(pf.libresPorQuincena) || 3;
+  const topeQuincena = Number(pf.topeQuincena) || 88;
+
+  return {
+    id: `persona_${p?.nombre || "sin_nombre"}`,
+    nombre: `Perfil de ${p?.nombre || "Persona"}`,
+    maxHorasDia: horasPorDia,
+    maxLibresQuincena: libresPorQuincena,
+    horasQuincena: topeQuincena,
+  };
+}
+
+function activarPersona(id, opts = {}) {
+  const { render = true, persistir = true } = opts;
+
+  if (!id || !personas[id]) {
+    console.warn("activarPersona: id inválido:", id);
+    return false;
+  }
+
+  personaActivaId = id;
+
+  // 1) jornadas pasan a apuntar a la persona activa
+  jornadas = personas[id].jornadas || [];
+
+  // 2) PERFIL_ACTUAL depende de la persona activa
+  CATEGORIA_ACTUAL = (personas[id]?.categoria || "CS");
+  PERFIL_ACTUAL = perfilDesdePersona(personas[id]);
+
+  // 3) Persistir + render
+  if (persistir) guardarPersonas();
+  if (render) {
+    renderHeader();
+    renderCalendar();
+    renderResumen();
+  }
+
+  return true;
+}
+
+// Exponer para test manual (sin UI por ahora)
+window.setPersonaActiva = (id) => activarPersona(id, { render: true, persistir: true });
+window.getPersonaActiva = () => personaActivaId;
+window.getPersonas = () => Object.keys(personas || {});
+
+// ==========================
+// CREAR PERSONA (sin UI)
+// ==========================
+
+function _nuevoIdPersona() {
+  const ids = Object.keys(personas || {});
+  let n = 1;
+  while (ids.includes("p" + n)) n++;
+  return "p" + n;
+}
+
+function _clampNumero(x, min, max, def) {
+  const v = Number(x);
+  if (!Number.isFinite(v)) return def;
+  return Math.min(max, Math.max(min, v));
+}
+
+function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar = false) {
+  const id = _nuevoIdPersona();
+
+  const nombreOk = (String(nombre || "").trim() || `Persona ${id}`).trim();
+  const cat = (categoria === "S") ? "S" : "CS";
+
+  const h = _clampNumero(horasPorDia, 0.5, 9, 8);
+  // redondeo a múltiplos de 0.5
+  const horas = Math.round(h * 2) / 2;
+
+  const libres = Math.round(_clampNumero(libresPorQuincena, 2, 14, 3));
+
+  personas[id] = {
+    nombre: nombreOk,
+    categoria: cat,
+    perfil: {
+      horasPorDia: horas,
+      libresPorQuincena: libres,
+      topeQuincena: 88, // por ahora fijo según tu regla
+    },
+    jornadas: [],
+  };
+
+  // Guardar
+  guardarPersonas();
+
+  // Activar si se pidió
+  if (activar) {
+    activarPersona(id, { render: true, persistir: true });
+  }
+
+  return id;
+}
+
+// Exponer para test manual
+window.crearPersona = (nombre, categoria, horasPorDia, libresPorQuincena, activar = false) =>
+  crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar);
+
+
+
+// ==========================
+// STORAGE ADAPTER (web hoy, mobile mañana)
+// ==========================
+
+function storageLoadJornadas() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const data = JSON.parse(raw);
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.error("storageLoadJornadas: error leyendo storage:", e);
+    return [];
+  }
+}
+
+function storageSaveJornadas(jornadas) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(jornadas));
+    return true;
+  } catch (e) {
+    console.error("storageSaveJornadas: error guardando storage:", e);
+    return false;
+  }
+}
+
+
+
+function guardarJornadas() {
+  guardarPersonas();
+}
+
+
+// ==========================================================
+// HERRAMIENTA (manual, una sola vez):
+// Limpia del storage todas las jornadas "fantasma" NORMAL 8/0 sin flags.
+// Uso (con la app abierta): abrir consola y ejecutar:
+//   limpiarJornadasFantasma80()
+// Devuelve un resumen por consola y re-renderiza.
+// ==========================================================
+window.limpiarJornadasFantasma80 = function limpiarJornadasFantasma80() {
+  const antes = jornadas.length;
+
+  const nuevas = jornadas.filter(j => {
+    // Remover solamente NORMAL 8/0 sin flags (día asumido)
+    if (dn_esNormalAsumida80(j)) return false;
+    return true;
+  });
+
+  const removidas = antes - nuevas.length;
+  jornadas.length = 0;
+  jornadas.push(...nuevas);
+
+  if (removidas > 0) guardarJornadas();
+}
+  ;
+
+function cargarJornadas() {
+  const data = storageLoadJornadas();
+  if (!Array.isArray(data) || data.length === 0) return;
+
+  let huboMigracion = false;
+
+  const normalizadas = data
+    .map((j) => {
+      if (!j || !j.fecha) return null;
+
+      // Normaliza DMY/Date/ISO a ISO YYYY-MM-DD
+      const iso = dn_normalizarFecha(j.fecha);
+      if (!iso) return null;
+
+      if (j.fecha !== iso) huboMigracion = true;
+
+      return {
+        ...j,
+        fecha: iso,
+      };
+    })
+    .filter(Boolean);
+
+  // mantener referencia del array original
+  jornadas.length = 0;
+  jornadas.push(...normalizadas);
+
+  // Si migramos, re-guardamos para no repetir conversiones
+  if (huboMigracion) {
+    guardarJornadas();
+    console.log("Migración OK: fechas normalizadas a ISO (YYYY-MM-DD).");
+  }
+}
+
+
+function buscarJornadaPorFecha(fecha) {
+  const key = dn_normalizarFecha(fecha);
+  if (!key) return undefined;
+
+  return jornadas.find((j) => dn_normalizarFecha(j?.fecha) === key);
+}
+
+
+
+function pedirHorasConReintento(titulo, valorActual) {
+  while (true) {
+    const s = uiPrompt(titulo, valorActual);
+    if (s === null) return null; // canceló
+
+    const n = dn_normalizarNumero(s);
+
+    if (!dn_esNumeroValido(n)) {
+      uiAlert("Valor inválido. Usá múltiplos de 0.5 (ej: 6, 7.5) y no negativos.");
+      continue;
+    }
+
+    return n; // válido
+  }
+}
+
+
+function pedirSupervisorConTope(crupier, valorActual, maxTotal = MAX_HORAS_DIA()) {
+  while (true) {
+    const sup = pedirHorasConReintento(
+      "Horas de Supervisor (múltiplos de 0.5):",
+      valorActual
+    );
+    if (sup === null) return null;
+
+    const v = dn_validarHoras(crupier, sup, maxTotal);
+    if (!v.ok) {
+      uiAlert(v.msg);
+      continue; // vuelve a pedir supervisor
+    }
+
+    return sup;
+  }
+}
+
+
+
+
+function editarJornada(index) {
+  console.log("editarJornada() index =", index);
+
+  _mjIndexActual = index;
+
+  const j = jornadas[index] || {};
+
+  // Tipo por flags (lógica pura en domain)
+  const tipo = dn_getTipoFromFlags(j);
+
+  // Radios
+  const r = document.querySelector(`input[name="mjTipo"][value="${tipo}"]`);
+  if (r) r.checked = true;
+
+  // Inputs horas
+  const inpCr = document.getElementById("mjCrupier");
+  const inpSup = document.getElementById("mjSupervisor");
+  if (inpCr) inpCr.value = (j.crupier ?? 0);
+  if (inpSup) inpSup.value = (j.supervisor ?? 0);
+
+  // Modal
+  const modal = document.getElementById("modalJornada");
+  if (!modal) {
+    console.error("No existe #modalJornada en el HTML");
+    return;
+  }
+
+  // ====== ✅ Tope LIBRE: deshabilitar radio si ya hay 3 en la quincena ======
+  try {
+    const radioLibre = document.querySelector('input[name="mjTipo"][value="libre"]');
+    if (radioLibre) {
+      const keyActual = dn_normalizarFecha(j.fecha);
+      let qIndexActual = null;
+
+      const firstDay = new Date(calYear, calMonth, 1);
+      const startOffset = firstDay.getDay();
+      const startDate = dn_addDays(firstDay, -startOffset);
+
+
+
+      for (let i = 0; i < 42; i++) {
+        const d = dn_addDays(startDate, i);
+        const keyD = dn_toISODate(d);
+        if (keyD === keyActual) {
+          qIndexActual = dn_getQuincenaIndex(d);
+          break;
+        }
+      }
+
+      if (qIndexActual !== null) {
+        let libres = 0;
+
+        for (let i = 0; i < jornadas.length; i++) {
+          const jj = jornadas[i];
+          if (!jj || !jj.fecha) continue;
+          if (jj.libre !== true) continue;
+
+          const keyJJ = dn_normalizarFecha(jj.fecha);
+          let qIdx = null;
+
+          for (let k = 0; k < 42; k++) {
+            const d = dn_addDays(startDate, k);
+            const keyD = dn_toISODate(d);
+            if (keyD === keyJJ) {
+              qIdx = dn_getQuincenaIndex(d);
+              break;
+            }
+          }
+
+          if (qIdx === qIndexActual) libres++;
+        }
+
+        const estaFechaYaEsLibre = (j.libre === true);
+        const deboBloquear = (libres >= MAX_LIBRES_QUINCENA()) && !estaFechaYaEsLibre;
+        radioLibre.disabled = deboBloquear;
+      } else {
+        radioLibre.disabled = false;
+      }
+    }
+  } catch (e) {
+    console.warn("No se pudo aplicar tope de LIBRE:", e);
+  }
+  // ====== FIN TOPE LIBRE ======
+
+  // Aplicar UI según tipo si existe helper
+  if (window._mj_aplicarUIporTipo) window._mj_aplicarUIporTipo();
+
+  // Mostrar (forzado y limpio)
+  modal.hidden = false;
+  modal.removeAttribute("hidden");
+  modal.style.display = "";
+
+  console.log("Modal abierto:", modal.hidden === false);
+
+  setTimeout(() => {
+    if (inpCr) {
+      inpCr.focus();
+      inpCr.select();
+    }
+  }, 0);
+}
+
+
+
+
+function changeMonth(delta) {
+  calMonth += delta;
+  if (calMonth < 0) { calMonth = 11; calYear--; }
+  if (calMonth > 11) { calMonth = 0; calYear++; }
+  renderCalendar();
+}
+
+
+
+
+
+
+function renderCalendar() {
+  renderCalendarHeader();
+  renderCalendarGrid();
+  renderResumen();
+}
+
+// ===== Modal Jornada (HTML) - controlador =====
+let _mjIndexActual = null;
+
+let _mjPaso = "cr";   // "cr" o "sup"
+let _mjTempCr = 0;
+
+// Guardamos el estado original del registro al abrir el modal (para decidir si es un "placeholder vacío")
+let _mjEraPlaceholderVacio = false;
+let _mjOriginalCr = 0;
+let _mjOriginalSup = 0;
+
+// Leyendas del modal
+let _mjTipoOriginal = "normal";
+let _mjFechaOriginal = null;
+
+
+function _mjLabelDeInput(inputId) {
+  const inp = document.getElementById(inputId);
+  return inp ? inp.closest("label") : null;
+}
+
+
+
+function _mjSetPaso(paso) {
+  _mjPaso = paso;
+
+  const lblCr = _mjLabelDeInput("mjCrupier");
+  const lblSup = _mjLabelDeInput("mjSupervisor");
+  const btnOk = _mjEl("mjOk");
+
+  if (paso === "cr") {
+    if (lblCr) lblCr.hidden = false;
+    if (lblSup) lblSup.hidden = true;
+    if (btnOk) btnOk.textContent = "Siguiente";
+    setTimeout(() => {
+      const cr = _mjEl("mjCrupier");
+      if (cr) { cr.focus(); cr.select(); }
+    }, 0);
+
+  } else {
+    if (lblCr) lblCr.hidden = true;
+    if (lblSup) lblSup.hidden = false;
+    if (btnOk) btnOk.textContent = "Continuar";
+    setTimeout(() => {
+      const inp = document.getElementById("mjSupervisor");
+      if (inp) {
+        inp.focus();
+        inp.select();
+      }
+    }, 0);
+
+  }
+}
+
+
+
+
+
+function _mjEl(id) { return document.getElementById(id); }
+
+function _mjGetTipo() {
+  const r = document.querySelector('input[name="mjTipo"]:checked');
+  return r ? r.value : "normal";
+}
+
+function _mjSetTipo(tipo) {
+  const radio = document.querySelector(`input[name="mjTipo"][value="${tipo}"]`);
+  if (radio) radio.checked = true;
+}
+
+
+function _mjMostrarMsg(txt) {
+  const box = _mjEl("mjMsg");
+  if (!box) return;
+
+  if (!txt || String(txt).trim() === "") {
+    box.hidden = true;
+    box.innerHTML = "";
+    return;
+  }
+
+  box.hidden = false;
+  box.innerHTML = String(txt).replace(/\n/g, "<br>");
+}
+
+
+
+
+
+
+// ==========================
+// LEYENDAS (mjInfo / mjCambiando)
+// ==========================
+
+function _mjTipoLabel(tipo) {
+  switch (tipo) {
+    case "normal": return "Normal";
+    case "falta": return "Falta";
+    case "libre": return "Libre";
+    case "libreTrabajado": return "Libre trabajado";
+    case "compensado": return "Compensado";
+    case "licAnual": return "Licencia anual";
+    case "licEnfermedad": return "Licencia enfermedad";
+    case "licSinGoce": return "Licencia sin goce";
+    default: return String(tipo || "");
+  }
+}
+
+function _mjFormatoFechaDMY(isoLike) {
+  const key = dn_normalizarFecha(isoLike);
+  if (!key) return "—";
+  // key: YYYY-MM-DD
+  const y = key.slice(0, 4);
+  const m = key.slice(5, 7);
+  const d = key.slice(8, 10);
+  return `${d}/${m}/${y}`;
+}
+
+function _mjImpactoTexto(tipo, j) {
+  // Nota: esto es SOLO UI (texto humano). No cambia reglas del negocio.
+  const cr = Number(j?.crupier) || 0;
+  const sup = Number(j?.supervisor) || 0;
+  const total = cr + sup;
+
+  if (tipo === "falta") {
+    return `Genera descuento de ${MAX_HORAS_DIA()} hs`;
+  }
+
+  if (tipo === "libre") {
+    return `LIBRE (tope ${MAX_LIBRES_QUINCENA()} por quincena).`;
+  }
+
+  if (tipo === "compensado") {
+    return "Usa 1 saldo de LIBRE TRABAJADO.";
+  }
+
+  if (tipo === "libreTrabajado") {
+    return "Aumenta saldo de LIBRE TRABAJADO.";
+  }
+
+  // normal
+  if (total >= MAX_HORAS_DIA()) return "Trabajado sin descuento.";
+  if (total > 0) return `Genera descuento de ${MAX_HORAS_DIA() - total} hs`;
+  return "Día normal";
+}
+
+function _mjSetInfo(txt) {
+  const el = _mjEl("mjInfo");
+  if (el) el.textContent = txt || "—";
+}
+
+function _mjSetCambiando(txt, visible) {
+  const el = _mjEl("mjCambiando");
+  if (!el) return;
+  if (visible) {
+    el.hidden = false;
+    el.textContent = txt || "";
+  } else {
+    el.hidden = true;
+    el.textContent = "";
+  }
+}
+
+
+
+
+
+function _mjActualizarLeyendas() {
+  if (_mjIndexActual === null) return;
+
+  const j = jornadas[_mjIndexActual];
+  if (!j) return;
+
+  // Tipo seleccionado actualmente (target)
+  const tipoActual = _mjGetTipo ? _mjGetTipo() : dn_getTipoFromFlags(j);
+
+  // ¿Cambia el tipo respecto al original?
+  const difiereTipo = (tipoActual !== _mjTipoOriginal);
+
+  // ¿Cambia horas respecto al original?
+  const crTxt = ((_mjEl("mjCrupier")?.value || "") + "").trim().replace(",", ".");
+  const supTxt = ((_mjEl("mjSupervisor")?.value || "") + "").trim().replace(",", ".");
+  const cr = crTxt === "" ? 0 : Number(crTxt);
+  const sup = supTxt === "" ? 0 : Number(supTxt);
+  const difiereHoras = (cr !== _mjOriginalCr) || (sup !== _mjOriginalSup);
+
+  const hayCambios = difiereTipo || difiereHoras;
+
+  // IMPORTANTE: NO tocamos mjInfo acá.
+  // mjInfo queda como "estado actual/original" (lo setea al abrir con _mjSetInfoSuperior).
+
+  if (hayCambios) {
+    _mjSetCambiando(`Cambiando a: ${_mjTipoLabel(tipoActual)}`, true);
+  } else {
+    // Si preferís ocultarlo en vez de "Sin cambios.", lo cambiamos después (otro paso)
+    _mjSetCambiando("Sin cambios.", true);
+  }
+}
+
+
+
+
+const aplicarUIporTipo = () => {
+  const tipo = _mjGetTipo();
+  const cr = _mjEl("mjCrupier");
+  const sup = _mjEl("mjSupervisor");
+  const btnOk = _mjEl("mjOk");
+
+  const habil = dn_horasHabilitadas(tipo);
+
+  cr.disabled = !habil;
+  sup.disabled = !habil;
+
+  const lblCr = _mjLabelDeInput("mjCrupier");
+  const lblSup = _mjLabelDeInput("mjSupervisor");
+
+  _mjMostrarMsg("");
+
+  // =========================
+  // TIPOS SIN HORAS
+  // =========================
+  if (!habil) {
+    if (lblCr) lblCr.hidden = true;
+    if (lblSup) lblSup.hidden = true;
+    if (btnOk) btnOk.textContent = "Continuar";
+
+    cr.value = "0";
+    sup.value = "0";
+
+    _mjTempCr = 0;
+    _mjPaso = "cr";
+    _mjTipoPrev = tipo;
+    return;
+  }
+
+  // =========================
+  // TIPOS CON HORAS
+  // =========================
+
+  // Si venimos de un tipo SIN horas y pasamos a NORMAL o LIBRE TRABAJADO,
+  // forzar siempre el mismo comportamiento: 8/0 con selección.
+  if (
+    (tipo === "normal" || tipo === "libreTrabajado") &&
+    _mjTipoPrev &&
+    _mjTipoPrev !== tipo
+  ) {
+    cr.value = String(MAX_HORAS_DIA());
+    sup.value = "0";
+    setTimeout(() => {
+      cr.focus();
+      cr.select(); // ← deja el valor seleccionado (azul)
+    }, 0);
+  }
+
+  if (lblCr) lblCr.hidden = false;
+  if (lblSup) lblSup.hidden = true;
+
+  _mjPaso = "cr";
+  if (btnOk) btnOk.textContent = "Aceptar";
+
+  setTimeout(() => {
+    cr.focus();
+    cr.select();
+  }, 0);
+
+  _mjTipoPrev = tipo;
+};
+
+function _mjLeerHoras() {
+  const crTxt = (_mjEl("mjCrupier").value || "").trim().replace(",", ".");
+  const supTxt = (_mjEl("mjSupervisor").value || "").trim().replace(",", ".");
+
+  const cr = crTxt === "" ? 0 : Number(crTxt);
+  const sup = supTxt === "" ? 0 : Number(supTxt);
+
+  // ✅ Validación centralizada en domain.js
+  const v = dn_validarHoras(cr, sup, MAX_HORAS_DIA());
+  if (!v.ok) return { ok: false, msg: v.msg };
+
+  return { ok: true, cr, sup };
+}
+
+
+
+/*
+const MAX_LIBRES_POR_QUINCENA = 3;
+
+function bloquearRadioLibreSiCorresponde(fecha, jornadaActual) {
+  const qIndex = dn_getQuincenaIndex(fecha);
+
+  const libres = jornadas.filter(
+    j => j.qIndex === qIndex && j.tipo === "LIBRE"
+  ).length;
+
+  const estaFechaYaEsLibre =
+    jornadaActual && jornadaActual.tipo === "LIBRE";
+
+  const radioLibre = document.getElementById("radioLibre");
+  const msg = document.getElementById("msgTopeLibre");
+
+  const deboBloquear =
+    libres >= MAX_LIBRES_POR_QUINCENA && !estaFechaYaEsLibre;
+
+  if (radioLibre) radioLibre.disabled = deboBloquear;
+
+  if (msg) {
+    msg.style.display = deboBloquear ? "block" : "none";
+    msg.textContent = deboBloquear
+      ? `Tope alcanzado: máximo ${MAX_LIBRES_POR_QUINCENA} libres en la quincena.`
+      : "";
+  }
+}
+*/
+function abrirModalJornada(index) {
+  _mjIndexActual = index;
+
+  const j = jornadas[index];
+  _mjSetInfoSuperior(j);
+
+  // Estado original (para poder decidir si este registro nació como 'día vacío')
+  _mjOriginalCr = Number(j.crupier) || 0;
+  _mjOriginalSup = Number(j.supervisor) || 0;
+  _mjEraPlaceholderVacio = (
+    _mjOriginalCr === 0 &&
+    _mjOriginalSup === 0 &&
+    !j.falta && !j.libre && !j.libreTrabajado && !j.compensado && !j.licAnual && !j.licEnfermedad && !j.licSinGoce
+  );
+
+  // Pre-cargar tipo según flags existentes
+  const tipo = dn_getTipoFromFlags(j);
+  _mjSetTipo(tipo);
+
+  // Guardar estado original para leyendas
+  _mjTipoOriginal = tipo;
+  _mjFechaOriginal = j.fecha;
+
+  // Pre-cargar horas
+  _mjEl("mjCrupier").value = String(Number(j.crupier) || 0);
+  _mjEl("mjSupervisor").value = String(Number(j.supervisor) || 0);
+
+  // ✅ Default SOLO para NORMAL (si no hay horas cargadas)
+  const entraDefaultNormal =
+    (tipo === "normal") &&
+    (Number(j.crupier) || 0) === 0 &&
+    (Number(j.supervisor) || 0) === 0;
+
+  if (entraDefaultNormal) {
+    _mjEl("mjCrupier").value = String(MAX_HORAS_DIA());
+    _mjEl("mjSupervisor").value = "0";
+
+    // Si era placeholder vacío, que 8/0 NO cuente como "cambio" al abrir
+    if (_mjEraPlaceholderVacio) {
+      _mjOriginalCr = MAX_HORAS_DIA();
+      _mjOriginalSup = 0;
+    }
+  }
+
+  // ✅ Aplicar UI correcta (la que maneja labels + pasos)
+  if (window._mj_aplicarUIporTipo) {
+    window._mj_aplicarUIporTipo();
+  } else {
+    _mjAplicarUIporTipo?.();
+  }
+
+  // ✅ Forzar paso inicial coherente (si trabaja -> empezar en Crupier)
+  if (dn_horasHabilitadas(tipo)) {
+    _mjPaso = "cr";
+    _mjTempCr = 0;
+    _mjSetPaso("cr");
+  } else {
+    setTimeout(() => _mjEl("mjOk")?.focus(), 0);
+  }
+
+  _mjActualizarLeyendas();
+  _mjEl("modalJornada").hidden = false;
+}
+
+
+
+
+function cerrarModalJornada() {
+  // Si este registro nació como placeholder vacío (0/0 sin flags)
+  // y el usuario cierra el modal sin guardar nada real, lo eliminamos
+  // para evitar "días fantasma" 0/0 en el calendario.
+  if (_mjIndexActual !== null) {
+    const j = jornadas[_mjIndexActual];
+
+    if (j && _mjEraPlaceholderVacio) {
+      const cr = Number(j.crupier) || 0;
+      const sup = Number(j.supervisor) || 0;
+
+      const sinFlags = !j.falta && !j.libre && !j.libreTrabajado && !j.compensado && !j.licAnual && !j.licEnfermedad && !j.licSinGoce;
+
+      if (sinFlags && cr === 0 && sup === 0) {
+        jornadas.splice(_mjIndexActual, 1);
+        guardarJornadas();
+        renderCalendar();
+      }
+    }
+  }
+
+  _mjEl("modalJornada").hidden = true;
+  _mjIndexActual = null;
+  _mjEraPlaceholderVacio = false;
+  _mjMostrarMsg("");
+}
+
+
+
+
+
+
+
+
+
+// Inicializar listeners del modal (1 sola vez)
+window.addEventListener("DOMContentLoaded", () => {
+
+  // ===============================
+  // Reiniciar (solo UI, no guarda)
+  // ===============================
+  const btnReset = document.getElementById("mjReset");
+  if (btnReset) {
+    btnReset.addEventListener("click", () => {
+      if (_mjIndexActual === null) return;
+
+      // 1) Volver al tipo ORIGINAL (radio)
+      _mjSetTipo(_mjTipoOriginal);
+
+      // 2) Reaplicar UI del tipo (igual que cuando cambiás radios)
+      if (window._mj_aplicarUIporTipo) window._mj_aplicarUIporTipo();
+
+      // 3) Volver a horas ORIGINALES (sin inventar MAX/0)
+      const cr = document.getElementById("mjCrupier");
+      const sup = document.getElementById("mjSupervisor");
+      if (cr) cr.value = String(_mjOriginalCr ?? 0);
+      if (sup) sup.value = String(_mjOriginalSup ?? 0);
+
+      // 4) Reset del flujo de 2 pasos (Normal / Libre Trab.)
+      _mjTempCr = 0;
+      _mjPaso = "cr";
+
+      // 5) Limpiar mensaje (si estuviera)
+      if (typeof _mjMostrarMsg === "function") _mjMostrarMsg("");
+
+      // 6) Recalcular leyendas (debe quedar sin “Cambiando a…”)
+      _mjActualizarLeyendas();
+
+      // 7) Foco coherente
+      const tipo = _mjGetTipo();
+      const habil = dn_horasHabilitadas(tipo);
+      if (habil) {
+        setTimeout(() => {
+          if (cr) {
+            cr.focus();
+            cr.select();
+          }
+        }, 0);
+      } else {
+        setTimeout(() => _mjEl("mjOk")?.focus(), 0);
+      }
+    });
+  }
+
+
+
+  const modal = _mjEl("modalJornada");
+  if (!modal) return;
+
+  // asegurar cerrado al cargar
+  modal.hidden = true;
+
+  // Estado flujo 2 pasos
+  _mjPaso = "cr";
+  _mjTempCr = 0;
+
+  const labelDe = (inputId) => {
+    const inp = document.getElementById(inputId);
+    return inp ? inp.closest("label") : null;
+  };
+
+  const setPaso = (paso) => {
+    _mjPaso = paso;
+
+    const lblCr = labelDe("mjCrupier");
+    const lblSup = labelDe("mjSupervisor");
+    const btnOk = _mjEl("mjOk");
+
+    if (paso === "cr") {
+      if (lblCr) lblCr.hidden = false;
+      if (lblSup) lblSup.hidden = true;
+      if (btnOk) btnOk.textContent = "Siguiente";
+      setTimeout(() => _mjEl("mjCrupier")?.focus(), 0);
+    } else {
+      if (lblCr) lblCr.hidden = true;
+      if (lblSup) lblSup.hidden = false;
+      if (btnOk) btnOk.textContent = "Continuar";
+      setTimeout(() => {
+        const sup = _mjEl("mjSupervisor");
+        if (sup) { sup.focus(); sup.select(); }
+      }, 0);
+
+    }
+  };
+
+  let _mjTipoPrev = null;
+
+  const aplicarUIporTipo = () => {
+    const tipo = _mjGetTipo();
+    const cr = _mjEl("mjCrupier");
+    const sup = _mjEl("mjSupervisor");
+    const btnOk = _mjEl("mjOk");
+
+    const habil = dn_horasHabilitadas(tipo);
+
+    cr.disabled = !habil;
+    sup.disabled = !habil;
+
+    const lblCr = labelDe("mjCrupier");
+    const lblSup = labelDe("mjSupervisor");
+
+    _mjMostrarMsg("");
+
+    if (!habil) {
+      if (lblCr) lblCr.hidden = true;
+      if (lblSup) lblSup.hidden = true;
+      if (btnOk) btnOk.textContent = "Continuar";
+      cr.value = "0";
+      sup.value = "0";
+      _mjTempCr = 0;
+      _mjPaso = "cr";
+      _mjTipoPrev = tipo;
+      return;
+    }
+
+    // Si trabaja: arrancar con Crupier
+
+    // ✅ Si venimos de un tipo sin horas (LIBRE/FALTA/COMPENSADO) y volvemos a NORMAL,
+    // queremos siempre el mismo comportamiento: dejar 8 horas por defecto.
+    if ((tipo === "normal" || tipo === "libreTrabajado") && _mjTipoPrev && _mjTipoPrev !== tipo) {
+      const def = DIA_DEFAULT();
+      cr.value = String(def.cr);
+      sup.value = String(def.sup);
+    }
+
+    if (ES_SOLO_SUP()) {
+      if (lblCr) lblCr.hidden = true;
+      if (lblSup) lblSup.hidden = false;
+      setPaso("sup");
+    } else {
+      if (lblCr) lblCr.hidden = false;
+      if (lblSup) lblSup.hidden = true;
+      setPaso("cr");
+    }
+
+    _mjTipoPrev = tipo;
+  };
+
+  // Cancelar
+  _mjEl("mjCancel").addEventListener("click", () => cerrarModalJornada());
+
+
+
+
+  _mjEl("mjOk").addEventListener("click", () => {
+    if (_mjIndexActual === null) return;
+
+    const j = jornadas[_mjIndexActual];
+    const tipo = _mjGetTipo();
+
+    // ===============================
+    // Control: máximo LIBRES por quincena (según perfil)
+    // ===============================
+    if (tipo === "libre") {
+      const fechaActual = dn_normalizarFecha(j?.fecha);
+      const yaEraLibre = !!j?.libre;
+
+      if (!yaEraLibre && fechaActual) {
+        const qIndexActual = dn_getQuincenaIndex(
+          new Date(fechaActual + "T00:00:00")
+        );
+
+        let libres = 0;
+
+        for (let i = 0; i < jornadas.length; i++) {
+          const jj = jornadas[i];
+          if (!jj || jj.libre !== true) continue;
+
+          const keyJJ = dn_normalizarFecha(jj.fecha);
+          if (!keyJJ) continue;
+
+          const qIdx = dn_getQuincenaIndex(
+            new Date(keyJJ + "T00:00:00")
+          );
+
+          if (qIdx === qIndexActual) {
+            libres++;
+          }
+        }
+
+        // ✅ Bloquear al intentar marcar el (máximo + 1)
+        if (libres >= MAX_LIBRES_QUINCENA()) {
+          _mjMostrarMsg(
+            "Ya se alcanzó el máximo de días LIBRES en esta quincena. Elegí otra opción o presioná Cancelar."
+          );
+          return;
+        }
+      }
+    }
+
+
+    // ===============================
+    // Aplicar tipo (flags)
+    // ===============================
+    dn_aplicarTipoAFlags(j, tipo);
+
+    // ===============================
+    // Tipos sin horas → guardar directo
+    // ===============================
+    if (!dn_horasHabilitadas(tipo)) {
+      j.crupier = 0;
+      j.supervisor = 0;
+
+      guardarJornadas();
+      cerrarModalJornada();
+      renderCalendar();
+      return;
+    }
+
+    // ===============================
+    // PASO CRUPIER
+    // ===============================
+    if (_mjPaso === "cr") {
+      const crTxt = (_mjEl("mjCrupier").value || "").trim().replace(",", ".");
+      const crVal = crTxt === "" ? 0 : Number(crTxt);
+
+      const v = dn_validarHoras(crVal, 0, MAX_HORAS_DIA());
+      if (!v.ok) return _mjMostrarMsg(v.msg);
+
+      _mjTempCr = crVal;
+
+      // ✅ AVISO PREVIO AL PASO SUPERVISOR
+      // (usa el cálculo interno: 8 - cr)
+      if ((tipo === "normal" || tipo === "libreTrabajado") && crVal < MAX_HORAS_DIA()) {
+        const faltan = MAX_HORAS_DIA() - crVal;
+
+        const fmt = (n) => {
+          const s = Number(n).toFixed(1);
+          return s.endsWith(".0") ? s.slice(0, -2) : s;
+        };
+
+        _mjMostrarMsg(
+          `Aviso: Si ingresas menos de ${fmt(faltan)} hs de Supervisor,` +
+          `el día quedará con descuento.`
+        );
+      } else {
+        _mjMostrarMsg("");
+      }
+
+      setPaso("sup");
+      return;
+    }
+
+    // ===============================
+    // PASO SUPERVISOR
+    // ===============================
+    const supTxt = (_mjEl("mjSupervisor").value || "").trim().replace(",", ".");
+    const supVal = supTxt === "" ? 0 : Number(supTxt);
+
+    const v2 = dn_validarHoras(_mjTempCr, supVal, MAX_HORAS_DIA());
+    if (!v2.ok) return _mjMostrarMsg(v2.msg);
+
+    // Normal / Libre trabajado no pueden quedar en 0 / 0
+    if (
+      (tipo === "normal" || tipo === "libreTrabajado") &&
+      (_mjTempCr + supVal) === 0
+    ) {
+      return _mjMostrarMsg(
+        `Ingresá horas entre 0.5 y ${MAX_HORAS_DIA()}. Si no trabajaste, cambiá el tipo de día.`
+      );
+    }
+
+    // ===============================
+    // Regla DÍA VACÍO (normal 8/0)
+    // ===============================
+    const defCS = DIA_DEFAULT();
+    if (tipo === "normal" && _mjTempCr === defCS.cr && supVal === defCS.sup) {
+      jornadas.splice(_mjIndexActual, 1);
+      guardarJornadas();
+      cerrarModalJornada();
+      renderCalendar();
+      return;
+    }
+
+    // ===============================
+    // Guardar jornada
+    // ===============================
+    j.crupier = _mjTempCr;
+    j.supervisor = supVal;
+
+    guardarJornadas();
+    cerrarModalJornada();
+    renderCalendar();
+  });
+
+
+
+
+
+  // Cambios de radio
+  document.querySelectorAll('input[name="mjTipo"]').forEach(r => {
+    r.addEventListener("change", () => {
+      aplicarUIporTipo();
+      _mjActualizarLeyendas();
+
+      // ✅ Advertencia COMPENSADO sin saldo (solo si NO estaba ya en compensado)
+      const tipo = _mjGetTipo();
+
+      const msgBox = _mjEl("mjMsg");
+      const msgActual = (msgBox && !msgBox.hidden) ? (msgBox.textContent || "") : "";
+
+      const ES_MSG_SALDO_COMP =
+        msgActual.includes("COMPENSADO") && msgActual.toLowerCase().includes("saldo");
+
+      if (tipo === "compensado" && _mjTipoOriginal !== "compensado") {
+        const saldoGlobal = dn_calcularSaldoLibresTrabajadosGlobal(jornadas);
+        if ((Number(saldoGlobal.saldo) || 0) < 1) {
+          _mjMostrarMsg(
+            "⚠️ COMPENSADO sin saldo de Libres Trabajados.\n" +
+            "Si querés continuar igual, presioná Aceptar.\n" +
+            "Si no, Reiniciar o Cancelar."
+          );
+        } else {
+          // Si hay saldo, limpiar solo si era nuestro mensaje
+          if (ES_MSG_SALDO_COMP) _mjMostrarMsg("");
+        }
+      } else {
+        // Si sale de compensado, limpiar solo si era nuestro mensaje
+        if (ES_MSG_SALDO_COMP) _mjMostrarMsg("");
+      }
+    });
+  });
+  // ===== SETUP PRIMERA PERSONA (UI) =====
+  function _psEl(id) { return document.getElementById(id); }
+
+  function _psMsg(txt) {
+    const el = _psEl("psMsg");
+    if (el) el.textContent = txt || "";
+  }
+
+  function _psClamp(x, min, max, def) {
+    const n = Number(x);
+    if (!Number.isFinite(n)) return def;
+    return Math.max(min, Math.min(max, n));
+  }
+
+  function _psMostrarSetup(mostrar) {
+    const card = _psEl("personaSetup");
+    if (card) card.hidden = !mostrar;
+
+    // Intentamos ocultar el calendario / resumen si no hay personas (sin romper si no existen)
+    const h2Cal = Array.from(document.querySelectorAll("h2")).find(h => (h.textContent || "").toLowerCase().includes("calendario"));
+    if (h2Cal) h2Cal.hidden = mostrar;
+
+    const posibles = [
+      "#calendar", "#calendarGrid", "#calGrid", "#calendarHeader",
+      "#resumen", "#resumenWrap", "#resumenMes", "#resumenQuincena",
+      ".calendar", ".calendar-grid", ".resumen"
+    ];
+    posibles.forEach(sel => {
+      document.querySelectorAll(sel).forEach(el => { el.hidden = mostrar; });
+    });
+  }
+
+
+
+window._psBindCrearPersona = function _psBindCrearPersona() {
+  const btn = document.getElementById("psCrearBtn");
+  if (!btn) return;
+
+  const msgEl = document.getElementById("psMsg");
+  const setMsg = (t) => { if (msgEl) msgEl.textContent = t || ""; };
+
+  const clamp = (x, min, max, def) => {
+    const n = Number(x);
+    if (!Number.isFinite(n)) return def;
+    return Math.max(min, Math.min(max, n));
+  };
+
+  btn.onclick = () => {
+    setMsg("");
+
+    const nombre = (document.getElementById("psNombre")?.value || "").trim();
+    if (!nombre) { setMsg("Ingresá un nombre."); return; }
+
+    const categoria = document.getElementById("psCategoria")?.value || "cs";
+    const horasPorDia = clamp(document.getElementById("psHoras")?.value, 0.5, 9, 8);
+    const libresPorQuincena = clamp(document.getElementById("psLibres")?.value, 3, 12, 3);
+
+    crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, true);
+    guardarPersonas();
+
+    renderSelectorPersonas();
+    bindSelectorPersonas();
+
+    if (typeof _psMostrarSetup === "function") _psMostrarSetup(false);
+
+    renderCalendar();
+    renderResumen();
+  };
+};
+
+
+
+  // =====================================
+
+  // ===== INIT PERSONAS/UI (una sola vez) =====
+  cargarPersonas();
+  cargarJornadas();
+  bindCalendarNav();
+
+  // Botón "+ Nueva persona" -> abre el setup SIEMPRE
+  const btnNueva = document.getElementById("btnNuevaPersona");
+  if (btnNueva) {
+    btnNueva.onclick = () => {
+      _psBindCrearPersona();
+      _psMostrarSetup(true);
+      setTimeout(() => _psEl("psNombre")?.focus(), 0);
+    };
+  }
+
+  const ids = Object.keys(personas || {});
+  const esPersonaDefault =
+    ids.length === 1 &&
+    (String(personas[ids[0]]?.nombre || "").trim().toLowerCase() === "persona 1");
+
+  if (ids.length === 0 || esPersonaDefault) {
+    _psBindCrearPersona();
+    _psMostrarSetup(true);
+  } else {
+    _psMostrarSetup(false);
+    renderSelectorPersonas();
+    bindSelectorPersonas();
+    renderCalendar();
+    renderResumen();
+  }
+
+  // Exponer para usarlo al abrir el modal
+  window._mj_aplicarUIporTipo = aplicarUIporTipo;
+});
+
+
+// ==========================
+// UI MINIMA - SELECTOR PERSONA
+// ==========================
+
+function renderSelectorPersonas() {
+  const sel = document.getElementById("personaSelect");
+  if (!sel) return;
+
+  sel.innerHTML = "";
+
+  const ids = getPersonas();
+  const activa = getPersonaActiva();
+
+  ids.forEach((id) => {
+    const opt = document.createElement("option");
+    opt.value = id;
+    opt.textContent = personas[id]?.nombre || id;
+    if (id === activa) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
+function bindSelectorPersonas() {
+  const sel = document.getElementById("personaSelect");
+  if (!sel) return;
+
+  sel.addEventListener("change", () => {
+    const id = sel.value;
+    setPersonaActiva(id);
+    renderSelectorPersonas(); // re-sincroniza selección
+  });
+}
+
+
+
+/* === Leyenda superior del modal === */
+function _mjNombreTipo(tipo) {
+  switch (tipo) {
+    case "normal": return "Normal";
+    case "falta": return "Falta";
+    case "libre": return "Libre";
+    case "libreTrabajado": return "Libre trabajado";
+    case "compensado": return "Compensado";
+    case "licAnual": return "Licencia anual";
+    case "licEnfermedad": return "Licencia enfermedad";
+    case "licSinGoce": return "Licencia sin goce";
+    default: return tipo || "Normal";
+  }
+}
+
+function _mjImpactoOperativo(tipo) {
+  switch (tipo) {
+    case "falta":
+      return `Genera descuento de ${MAX_HORAS_DIA()} hs`;
+    case "libre":
+      return "No descuenta horas (día libre)";
+    case "libreTrabajado":
+      return "Suma 1 día LT";
+    case "compensado":
+      return "Usa 1 día LT (compensa)";
+    case "normal":
+    default:
+      return "Trabajado sin descuento";
+  }
+}
+
+function _mjSetInfoSuperior(jornada) {
+  const el = document.getElementById("mjInfo");
+  if (!el) return;
+
+  const fechaISO = jornada?.fecha || "";
+  const fechaTxt = fechaISO ? formatDate(new Date(fechaISO)) : "—";
+
+  const tipo = dn_getTipoFromFlags(jornada);
+  const tipoTxt = _mjNombreTipo(tipo);
+  const impacto = _mjImpactoOperativo(tipo);
+
+  el.innerHTML = `
+    <div>${fechaTxt} · ${tipoTxt}</div>
+    <div>Impacto: ${impacto}</div>
+  `;
+}
