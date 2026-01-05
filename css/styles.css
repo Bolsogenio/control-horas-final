@@ -1,0 +1,340 @@
+/* ===== Calendario mensual ===== */
+
+.cal-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.cal-title {
+  font-weight: 700;
+  flex: 1;
+  text-align: center;
+}
+
+.cal-weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  opacity: 0.85;
+}
+
+.cal-weekday {
+  text-align: center;
+}
+
+/* ===== GRILLA ===== */
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+
+  /* TODAS las filas iguales */
+  grid-auto-rows: 76px;
+
+  max-width: 520px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ===== CELDAS ===== */
+.cal-cell {
+  box-sizing: border-box;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 6px;
+  cursor: pointer;
+  user-select: none;
+  overflow: hidden;
+}
+
+.cal-cell.other-month {
+  opacity: 0.35;
+}
+
+.cal-cell.today {
+  outline: 2px solid #333;
+}
+
+.cal-cell.future {
+  opacity: 0.25;
+  cursor: not-allowed;
+}
+
+/* ===== CONTENIDO ===== */
+.cal-daynum {
+  font-weight: 700;
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.cal-summary {
+  font-size: 12px;
+  opacity: 0.9;
+  margin: 0;
+  line-height: 1.1;
+  overflow: hidden;
+}
+
+/* Colores por quincena */
+.q0 { background: rgba(255, 230, 150, 0.35); }
+.q1 { background: rgba(170, 230, 255, 0.35); }
+.q2 { background: rgba(190, 255, 200, 0.35); }
+
+/* ===== Responsive ===== */
+@media (max-width: 480px) {
+  .cal-grid,
+  .cal-weekdays,
+  .cal-header {
+    max-width: 360px;
+  }
+
+  .cal-grid {
+    grid-auto-rows: 68px;
+  }
+
+  .cal-daynum {
+    font-size: 13px;
+  }
+
+  .cal-summary {
+    font-size: 11px;
+  }
+}
+
+/* ===== Modal Jornada ===== */
+
+.mj-backdrop{
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.45);
+  z-index: 9999;
+  padding: 12px;
+}
+
+.mj-modal{
+  width: min(520px, 92vw);
+  max-height: calc(100vh - 24px);
+  overflow: auto;
+  border-radius: 14px;
+  background: #2f3b52;
+  color: #fff;
+  box-shadow: 0 10px 30px rgba(0,0,0,.35);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.mj-head{
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,.12);
+}
+
+.mj-title{
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.mj-body{
+  display: grid;
+  grid-template-columns: 1fr 200px;
+  gap: 12px;
+  padding: 12px 14px;
+}
+
+.mj-col-left{
+  display: grid;
+  gap: 10px;
+}
+
+.mj-label{
+  font-size: 12px;
+  opacity: .95;
+}
+
+.mj-label input{
+  margin-top: 6px;
+  width: 72px;
+  text-align: center;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  outline: none;
+}
+
+/* sin flechitas */
+.mj-label input[type="number"]::-webkit-outer-spin-button,
+.mj-label input[type="number"]::-webkit-inner-spin-button{
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.mj-col-right{
+  border-left: 1px solid rgba(255,255,255,.12);
+  padding-left: 12px;
+  display: grid;
+  gap: 8px;
+  align-content: start;
+}
+
+.mj-opt{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  padding: 6px 6px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.mj-opt:hover{
+  background: rgba(255,255,255,.06);
+}
+
+.mj-foot{
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255,255,255,.12);
+}
+
+.mj-foot button{
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.18);
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  cursor: pointer;
+}
+
+.mj-foot button:hover{
+  background: rgba(255,255,255,.12);
+}
+
+.mj-msg{
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 80, 80, .18);
+  border: 1px solid rgba(255, 80, 80, .35);
+  font-size: 12px;
+}
+
+@media (max-width: 420px){
+  .mj-body{
+    grid-template-columns: 1fr;
+  }
+  .mj-col-right{
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid rgba(255,255,255,.12);
+    padding-top: 10px;
+  }
+}
+
+.mj-info{
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.14);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.mj-cambiando{
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(80, 180, 255, .12);
+  border: 1px solid rgba(80, 180, 255, .28);
+  font-size: 13px;
+}
+
+#modalJornada[hidden] {
+  display: none !important;
+}
+
+#listaJornadas {
+  display: none;
+}
+
+/* iOS Safari: evitar auto-zoom */
+#modalJornada .mj-label input{
+  font-size: 16px;
+}
+/* ===== Setup primera persona (empty state) ===== */
+.setup-card {
+  border: 1px solid rgba(0,0,0,.12);
+  border-radius: 12px;
+  padding: 14px 14px 12px;
+  margin: 10px 0 14px;
+  background: rgba(255,255,255,.9);
+}
+
+.setup-card h3 {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+}
+
+.setup-sub {
+  margin: 0 0 12px;
+  opacity: .8;
+  line-height: 1.35;
+}
+
+.setup-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.setup-field span {
+  display: block;
+  font-size: .85rem;
+  opacity: .85;
+  margin-bottom: 4px;
+}
+
+.setup-field input,
+.setup-field select {
+  width: 100%;
+  padding: 10px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.15);
+  outline: none;
+}
+
+.setup-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.btn-primary {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 0;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.setup-msg {
+  font-size: .9rem;
+  opacity: .85;
+}
+
+/* Responsive */
+@media (max-width: 640px) {
+  .setup-grid { grid-template-columns: 1fr; }
+}
+
+
