@@ -1,6 +1,10 @@
 import { createRepositories } from "./infra/repository.js";
+import { createServices } from "./domain/services.js";
 
-const { personasRepo, jornadasRepo } = createRepositories();
+const repos = createRepositories();
+const { jornadasRepo } = repos;
+const services = createServices(repos);
+const personasService = services.personas;
 
 function MAX_HORAS_DIA() {
   return 9;
@@ -470,6 +474,11 @@ let personas = {};
 // Alias usado por toda la app (NO cambiar el resto del código)
 let jornadas = [];
 
+// Helper legacy: ids de personas
+function getPersonas() { return Object.keys(personas || {}); }
+function getPersonaActiva() { return personaActivaId; }
+
+
 // ==========================
 // APP STATE (flujo UI)
 // ==========================
@@ -558,42 +567,10 @@ const DIA_DEFAULT = () => (ES_SOLO_SUP()
 
 function cargarPersonas() {
   try {
-    const state = personasRepo.loadState();
+    const state = personasService.load();
 
-    // --- Caso 1: storage nuevo vacío ---
-    // Si no hay datos en el storage nuevo, NO crear Persona 1 automáticamente.
-    // Solo migramos desde el esquema viejo si existen jornadas viejas reales.
-    if (!state) {
-      const legacyJornadas = jornadasRepo.loadLegacy();
-
-      if (Array.isArray(legacyJornadas) && legacyJornadas.length > 0) {
-        personas = {
-          p1: {
-            nombre: "Persona 1",
-            categoria: "CS",
-            perfil: {
-              horasPorDia: MAX_HORAS_DIA(),
-              libresPorQuincena: MAX_LIBRES_QUINCENA(),
-              topeQuincena: HORAS_QUINCENA(),
-            },
-            jornadas: legacyJornadas,
-          },
-        };
-
-        personaActivaId = "p1";
-        guardarPersonas();
-      } else {
-        personas = {};
-        personaActivaId = null;
-        jornadas = [];
-      }
-
-      return;
-    }
-
-    // --- Caso 2: storage nuevo con datos ---
     personas = state.personas || {};
-    personaActivaId = state.personaActivaId;
+    personaActivaId = state.personaActivaId || null;
 
     if (!personaActivaId || !personas[personaActivaId]) {
       personaActivaId = Object.keys(personas)[0] || null;
@@ -617,6 +594,7 @@ function cargarPersonas() {
 
 
 
+
 // ==========================
 // GUARDAR
 // ==========================
@@ -627,7 +605,7 @@ function guardarPersonas() {
       personas[personaActivaId].jornadas = jornadas;
     }
 
-    personasRepo.saveState({
+    personasService.save({
       personaActivaId,
       personas,
     });
@@ -635,6 +613,7 @@ function guardarPersonas() {
     console.error("Error guardando personas:", e);
   }
 }
+
 
 
 // ==========================
@@ -687,9 +666,6 @@ function activarPersona(id, opts = {}) {
 }
 
 // Exponer para test manual (sin UI por ahora)
-window.setPersonaActiva = (id) => activarPersona(id, { render: true, persistir: true });
-window.getPersonaActiva = () => personaActivaId;
-window.getPersonas = () => Object.keys(personas || {});
 
 // ==========================
 // CREAR PERSONA (sin UI)
@@ -709,46 +685,38 @@ function _clampNumero(x, min, max, def) {
 }
 
 function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar = false) {
-  const id = _nuevoIdPersona();
-
-  const nombreOk = (String(nombre || "").trim() || `Persona ${id}`).trim();
+  const nombreOk = (String(nombre || "").trim() || "Persona").trim();
   const cat = (categoria === "S") ? "S" : "CS";
 
   const h = _clampNumero(horasPorDia, 0.5, 9, 8);
-  // redondeo a múltiplos de 0.5
   const horas = Math.round(h * 2) / 2;
 
   const libres = Math.round(_clampNumero(libresPorQuincena, 2, 14, 3));
 
-  personas[id] = {
+  const res = personasService.crear({
     nombre: nombreOk,
     categoria: cat,
     perfil: {
       horasPorDia: horas,
       libresPorQuincena: libres,
-      topeQuincena: 88, // por ahora fijo según tu regla
+      topeQuincena: 88, // se mantiene fijo como venías usando
     },
-    jornadas: [],
-  };
+  });
 
-  // Guardar
-  guardarPersonas();
+  // sincronizamos variables legacy
+  personas = res.personas || {};
+  personaActivaId = res.personaActivaId || res.id;
 
-  // Activar si se pidió
+  // Activar si se pidió (sin persistir, porque ya persistió el service)
   if (activar) {
-    activarPersona(id, { render: true, persistir: true });
+    activarPersona(res.id, { render: true, persistir: false });
   }
 
-  return id;
+  return res.id;
 }
 
+
 // Exponer para test manual
-window.crearPersona = (nombre, categoria, horasPorDia, libresPorQuincena, activar = false) =>
-  crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar);
-
-
-
-
 // ==========================
 // JORNADAS - PERSISTENCIA
 // ==========================
