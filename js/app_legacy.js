@@ -471,6 +471,79 @@ let personas = {};
 // Alias usado por toda la app (NO cambiar el resto del código)
 let jornadas = [];
 
+// ==========================
+// APP STATE (flujo UI)
+// ==========================
+// La UI NO decide "por intuición"; decide por appState.
+const APP_STATES = Object.freeze({
+  NO_PERSONAS: "NO_PERSONAS",
+  SETUP_PERSONA: "SETUP_PERSONA",
+  READY: "READY",
+});
+
+let appState = APP_STATES.NO_PERSONAS;
+
+function setAppState(next) {
+  appState = next;
+}
+
+function decideInitialState() {
+  const ids = Object.keys(personas || {});
+  if (ids.length === 0) return APP_STATES.NO_PERSONAS;
+
+  // Si existe una única persona llamada "Persona 1" (caso legacy), tratamos como setup.
+  const esPersonaDefault =
+    ids.length === 1 &&
+    (String(personas[ids[0]]?.nombre || "").trim().toLowerCase() === "persona 1");
+
+  return esPersonaDefault ? APP_STATES.SETUP_PERSONA : APP_STATES.READY;
+}
+
+// Mostrar/ocultar UI de setup sin depender de closures dentro de legacyInit()
+function psMostrarSetup(mostrar) {
+  const card = document.getElementById("personaSetup");
+  if (card) card.hidden = !mostrar;
+
+  // Intentamos ocultar el calendario / resumen si no hay personas (sin romper si no existen)
+  const h2Cal = Array.from(document.querySelectorAll("h2")).find(
+    (h) => (h.textContent || "").toLowerCase().includes("calendario")
+  );
+  if (h2Cal) h2Cal.hidden = mostrar;
+
+  const posibles = [
+    "#calendar", "#calendarGrid", "#calGrid", "#calendarHeader",
+    "#resumen", "#resumenWrap", "#resumenMes", "#resumenQuincena",
+    ".calendar", ".calendar-grid", ".resumen",
+  ];
+  posibles.forEach((sel) => {
+    document.querySelectorAll(sel).forEach((el) => { el.hidden = mostrar; });
+  });
+}
+
+function renderByAppState() {
+  // Botón "+ Nueva persona" siempre visible si existe
+  const btnNueva = document.getElementById("btnNuevaPersona");
+  if (btnNueva) btnNueva.hidden = false;
+
+  const sel = document.getElementById("personaSelect");
+  if (sel) sel.disabled = (appState !== APP_STATES.READY);
+
+  if (appState === APP_STATES.READY) {
+    psMostrarSetup(false);
+    renderSelectorPersonas();
+    bindSelectorPersonas();
+    renderHeader();
+    renderCalendar();
+    renderResumen();
+    return;
+  }
+
+  // NO_PERSONAS o SETUP_PERSONA
+  psMostrarSetup(true);
+
+  // En NO_PERSONAS, dejamos el selector vacío (si existe) y sin interacción.
+  if (sel) sel.innerHTML = "";
+}
 // Categoría activa de la persona (CS = Crupier/Supervisor, S = solo Supervisor)
 let CATEGORIA_ACTUAL = "CS";
 const ES_SOLO_SUP = () => CATEGORIA_ACTUAL === "S";
@@ -1356,6 +1429,9 @@ function cerrarModalJornada() {
 // LEGACY INIT (migrado a init único)
 // ===============================
 export function legacyInit() {
+  if (legacyInit._didRun) return;
+  legacyInit._didRun = true;
+
 
 
   // ===============================
@@ -1716,7 +1792,13 @@ export function legacyInit() {
 
 
 
-window._psBindCrearPersona = function _psBindCrearPersona() {
+// Bind del botón "Crear" del setup (idempotente)
+let _psCrearBound = false;
+
+function bindPersonaSetup() {
+  if (_psCrearBound) return;
+  _psCrearBound = true;
+
   const btn = document.getElementById("psCrearBtn");
   if (!btn) return;
 
@@ -1729,7 +1811,7 @@ window._psBindCrearPersona = function _psBindCrearPersona() {
     return Math.max(min, Math.min(max, n));
   };
 
-  btn.onclick = () => {
+  btn.addEventListener("click", () => {
     setMsg("");
 
     const nombre = (document.getElementById("psNombre")?.value || "").trim();
@@ -1742,54 +1824,46 @@ window._psBindCrearPersona = function _psBindCrearPersona() {
     crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, true);
     guardarPersonas();
 
-    renderSelectorPersonas();
-    bindSelectorPersonas();
+    // Transición de estado: al crear, pasamos a READY.
+    setAppState(APP_STATES.READY);
+    renderByAppState();
+  });
+}
 
-    if (typeof _psMostrarSetup === "function") _psMostrarSetup(false);
-
-    renderCalendar();
-    renderResumen();
-  };
+// Compat: si algo lo llama desde afuera, lo mantenemos.
+window._psBindCrearPersona = function _psBindCrearPersona() {
+  bindPersonaSetup();
 };
 
 
 
   // =====================================
 
-  // ===== INIT PERSONAS/UI (una sola vez) =====
+  // ===== INIT PERSONAS/UI (un solo flujo) =====
   cargarPersonas();
   cargarJornadas();
   bindCalendarNav();
 
-  // Botón "+ Nueva persona" -> abre el setup SIEMPRE
+  // Bind setup (crear persona) una sola vez
+  bindPersonaSetup();
+
+  // Botón "+ Nueva persona" -> SIEMPRE entra a SETUP_PERSONA
   const btnNueva = document.getElementById("btnNuevaPersona");
   if (btnNueva) {
     btnNueva.onclick = () => {
-      _psBindCrearPersona();
-      _psMostrarSetup(true);
+      bindPersonaSetup();
+      setAppState(APP_STATES.SETUP_PERSONA);
+      renderByAppState();
       setTimeout(() => _psEl("psNombre")?.focus(), 0);
     };
   }
 
-  const ids = Object.keys(personas || {});
-  const esPersonaDefault =
-    ids.length === 1 &&
-    (String(personas[ids[0]]?.nombre || "").trim().toLowerCase() === "persona 1");
-
-  if (ids.length === 0 || esPersonaDefault) {
-    _psBindCrearPersona();
-    _psMostrarSetup(true);
-  } else {
-    _psMostrarSetup(false);
-    renderSelectorPersonas();
-    bindSelectorPersonas();
-    renderCalendar();
-    renderResumen();
-  }
+  // Estado inicial + render inicial
+  setAppState(decideInitialState());
+  renderByAppState();
 
   // Exponer para usarlo al abrir el modal
   window._mj_aplicarUIporTipo = aplicarUIporTipo;
-
 }
 
 // (Opcional) exponer para debug manual
@@ -1817,7 +1891,10 @@ function renderSelectorPersonas() {
   });
 }
 
+let _personaSelectBound = false;
 function bindSelectorPersonas() {
+  if (_personaSelectBound) return;
+  _personaSelectBound = true;
   const sel = document.getElementById("personaSelect");
   if (!sel) return;
 
