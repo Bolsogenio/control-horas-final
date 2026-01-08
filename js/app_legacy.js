@@ -1,11 +1,16 @@
 import { createRepositories } from "./infra/repository.js";
-import { createServices } from "./domain/services.js";
+import { domRefs } from "./ui/dom.js";
+import { renderPersonaSelect, renderAppState } from "./ui/views.js";
+import { bindPersonaSelect } from "./ui/controllers.js";
 
-const repos = createRepositories();
-const { jornadasRepo } = repos;
-const services = createServices(repos);
-const personasService = services.personas;
-const jornadasService = services.jornadas;
+let _uiRefs = null;
+function UI() {
+  // Se inicializa después de DOMContentLoaded (legacyInit se llama desde app.js)
+  if (!_uiRefs) _uiRefs = domRefs();
+  return _uiRefs;
+}
+
+const { personasRepo, jornadasRepo } = createRepositories();
 
 function MAX_HORAS_DIA() {
   return 9;
@@ -475,15 +480,6 @@ let personas = {};
 // Alias usado por toda la app (NO cambiar el resto del código)
 let jornadas = [];
 
-// Activos (se setean al activar persona)
-let perfilActivo = null;
-let categoriaActiva = "CS";
-
-// Helper legacy: ids de personas
-function getPersonas() { return Object.keys(personas || {}); }
-function getPersonaActiva() { return personaActivaId; }
-
-
 // ==========================
 // APP STATE (flujo UI)
 // ==========================
@@ -572,10 +568,42 @@ const DIA_DEFAULT = () => (ES_SOLO_SUP()
 
 function cargarPersonas() {
   try {
-    const state = personasService.load();
+    const state = personasRepo.loadState();
 
+    // --- Caso 1: storage nuevo vacío ---
+    // Si no hay datos en el storage nuevo, NO crear Persona 1 automáticamente.
+    // Solo migramos desde el esquema viejo si existen jornadas viejas reales.
+    if (!state) {
+      const legacyJornadas = jornadasRepo.loadLegacy();
+
+      if (Array.isArray(legacyJornadas) && legacyJornadas.length > 0) {
+        personas = {
+          p1: {
+            nombre: "Persona 1",
+            categoria: "CS",
+            perfil: {
+              horasPorDia: MAX_HORAS_DIA(),
+              libresPorQuincena: MAX_LIBRES_QUINCENA(),
+              topeQuincena: HORAS_QUINCENA(),
+            },
+            jornadas: legacyJornadas,
+          },
+        };
+
+        personaActivaId = "p1";
+        guardarPersonas();
+      } else {
+        personas = {};
+        personaActivaId = null;
+        jornadas = [];
+      }
+
+      return;
+    }
+
+    // --- Caso 2: storage nuevo con datos ---
     personas = state.personas || {};
-    personaActivaId = state.personaActivaId || null;
+    personaActivaId = state.personaActivaId;
 
     if (!personaActivaId || !personas[personaActivaId]) {
       personaActivaId = Object.keys(personas)[0] || null;
@@ -599,15 +627,17 @@ function cargarPersonas() {
 
 
 
-
 // ==========================
 // GUARDAR
 // ==========================
 
 function guardarPersonas() {
   try {
-    // Paso 5.2: jornadas se guardan por JornadasService; acá solo persistimos PERSONAS (metadata).
-    personasService.save({
+    if (personaActivaId && personas[personaActivaId]) {
+      personas[personaActivaId].jornadas = jornadas;
+    }
+
+    personasRepo.saveState({
       personaActivaId,
       personas,
     });
@@ -615,7 +645,6 @@ function guardarPersonas() {
     console.error("Error guardando personas:", e);
   }
 }
-
 
 
 // ==========================
@@ -642,29 +671,24 @@ function perfilDesdePersona(p) {
 function activarPersona(id, opts = {}) {
   const { render = true, persistir = true } = opts;
 
-  if (!id || !personas[id]) return false;
+  if (!id || !personas[id]) {
+    console.warn("activarPersona: id inválido:", id);
+    return false;
+  }
 
   personaActivaId = id;
 
-  // Perfil/categoría activa (desde PERSONAS en memoria)
-  perfilActivo = personas[id].perfil || perfilActivo;
-  categoriaActiva = (personas[id].categoria || categoriaActiva);
+  // 1) jornadas pasan a apuntar a la persona activa
+  jornadas = personas[id].jornadas || [];
 
-  // Jornadas: se cargan por servicio (no desde personas[id].jornadas directo)
-  const js = (() => {
-    try { return jornadasService.load(id); } catch { return []; }
-  })();
+  // 2) PERFIL_ACTUAL depende de la persona activa
+  CATEGORIA_ACTUAL = (personas[id]?.categoria || "CS");
+  PERFIL_ACTUAL = perfilDesdePersona(personas[id]);
 
-  jornadas.length = 0;
-  if (Array.isArray(js) && js.length) jornadas.push(...js);
-
-  if (persistir) {
-    // Solo persistimos persona activa (PERSONAS)
-    try { personasService.setActiva(id); } catch {}
-  }
-
+  // 3) Persistir + render
+  if (persistir) guardarPersonas();
   if (render) {
-    renderSelectorPersonas();
+    renderHeader();
     renderCalendar();
     renderResumen();
   }
@@ -673,6 +697,9 @@ function activarPersona(id, opts = {}) {
 }
 
 // Exponer para test manual (sin UI por ahora)
+window.setPersonaActiva = (id) => activarPersona(id, { render: true, persistir: true });
+window.getPersonaActiva = () => personaActivaId;
+window.getPersonas = () => Object.keys(personas || {});
 
 // ==========================
 // CREAR PERSONA (sin UI)
@@ -692,38 +719,46 @@ function _clampNumero(x, min, max, def) {
 }
 
 function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar = false) {
-  const nombreOk = (String(nombre || "").trim() || "Persona").trim();
+  const id = _nuevoIdPersona();
+
+  const nombreOk = (String(nombre || "").trim() || `Persona ${id}`).trim();
   const cat = (categoria === "S") ? "S" : "CS";
 
   const h = _clampNumero(horasPorDia, 0.5, 9, 8);
+  // redondeo a múltiplos de 0.5
   const horas = Math.round(h * 2) / 2;
 
   const libres = Math.round(_clampNumero(libresPorQuincena, 2, 14, 3));
 
-  const res = personasService.crear({
+  personas[id] = {
     nombre: nombreOk,
     categoria: cat,
     perfil: {
       horasPorDia: horas,
       libresPorQuincena: libres,
-      topeQuincena: 88, // se mantiene fijo como venías usando
+      topeQuincena: 88, // por ahora fijo según tu regla
     },
-  });
+    jornadas: [],
+  };
 
-  // sincronizamos variables legacy
-  personas = res.personas || {};
-  personaActivaId = res.personaActivaId || res.id;
+  // Guardar
+  guardarPersonas();
 
-  // Activar si se pidió (sin persistir, porque ya persistió el service)
+  // Activar si se pidió
   if (activar) {
-    activarPersona(res.id, { render: true, persistir: false });
+    activarPersona(id, { render: true, persistir: true });
   }
 
-  return res.id;
+  return id;
 }
 
-
 // Exponer para test manual
+window.crearPersona = (nombre, categoria, horasPorDia, libresPorQuincena, activar = false) =>
+  crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar);
+
+
+
+
 // ==========================
 // JORNADAS - PERSISTENCIA
 // ==========================
@@ -731,16 +766,7 @@ function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar
 // En esta versión legacy, las jornadas se guardan dentro de la persona activa (guardarPersonas()).
 
 function guardarJornadas() {
-  try {
-    if (!personaActivaId) return;
-    // Guardado de jornadas por persona (Fase 5 – Paso 2)
-    const updated = jornadasService.save(personaActivaId, jornadas);
-    if (updated && typeof updated === "object") {
-      personas = updated;
-    }
-  } catch (e) {
-    console.error("guardarJornadas: error:", e);
-  }
+  guardarPersonas();
 }
 
 
@@ -770,24 +796,15 @@ window.limpiarJornadasFantasma80 = function limpiarJornadasFantasma80() {
   ;
 
 function cargarJornadas() {
-  if (!personaActivaId) {
-    jornadas.length = 0;
-    return;
-  }
-
   const data = (() => {
     try {
-      return jornadasService.load(personaActivaId);
+      return jornadasRepo.loadLegacy();
     } catch (e) {
-      console.error("cargarJornadas: error:", e);
+      console.error("cargarJornadas: error leyendo storage legacy:", e);
       return [];
     }
   })();
-
-  if (!Array.isArray(data) || data.length === 0) {
-    jornadas.length = 0;
-    return;
-  }
+  if (!Array.isArray(data) || data.length === 0) return;
 
   let huboMigracion = false;
 
@@ -795,35 +812,18 @@ function cargarJornadas() {
     .map((j) => {
       if (!j || !j.fecha) return null;
 
-      // Soportar viejos formatos: 'DD/MM/YYYY' o 'YYYY-MM-DD'
-      let iso = String(j.fecha);
-      const m = iso.match(/^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*$/);
-      if (m) {
-        const dd = String(m[1]).padStart(2, "0");
-        const mm = String(m[2]).padStart(2, "0");
-        const yyyy = m[3];
-        iso = `${yyyy}-${mm}-${dd}`;
-        huboMigracion = true;
-      }
+      // Normaliza DMY/Date/ISO a ISO YYYY-MM-DD
+      const iso = dn_normalizarFecha(j.fecha);
+      if (!iso) return null;
 
-      // Validación mínima de ISO
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
+      if (j.fecha !== iso) huboMigracion = true;
 
       return {
-        crupier: Number(j.crupier || 0),
-        supervisor: Number(j.supervisor || 0),
-        falta: !!j.falta,
-        libre: !!j.libre,
-        libreTrabajado: !!j.libreTrabajado,
-        compensado: !!j.compensado,
-        licAnual: !!j.licAnual,
-        licEnfermedad: !!j.licEnfermedad,
-        licSinGoce: !!j.licSinGoce,
+        ...j,
         fecha: iso,
       };
     })
-    .filter(Boolean)
-    .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
+    .filter(Boolean);
 
   // mantener referencia del array original
   jornadas.length = 0;
@@ -1873,34 +1873,26 @@ window.legacyInit = legacyInit;
 // ==========================
 
 function renderSelectorPersonas() {
-  const sel = document.getElementById("personaSelect");
-  if (!sel) return;
-
-  sel.innerHTML = "";
+  const refs = UI();
 
   const ids = getPersonas();
-  const activa = getPersonaActiva();
+  const activaId = getPersonaActiva();
 
-  ids.forEach((id) => {
-    const opt = document.createElement("option");
-    opt.value = id;
-    opt.textContent = personas[id]?.nombre || id;
-    if (id === activa) opt.selected = true;
-    sel.appendChild(opt);
-  });
+  renderPersonaSelect(refs, { personas, activaId });
 }
 
 let _personaSelectBound = false;
 function bindSelectorPersonas() {
   if (_personaSelectBound) return;
   _personaSelectBound = true;
-  const sel = document.getElementById("personaSelect");
-  if (!sel) return;
 
-  sel.addEventListener("change", () => {
-    const id = sel.value;
-    setPersonaActiva(id);
-    renderSelectorPersonas(); // re-sincroniza selección
+  const refs = UI();
+
+  bindPersonaSelect(refs, {
+    onChangePersona: (id) => {
+      setPersonaActiva(id);
+      renderSelectorPersonas(); // re-sincroniza selección
+    },
   });
 }
 

@@ -1,12 +1,33 @@
-const CACHE_NAME = "control-horas-v1";
+const CACHE_NAME = "control-horas-v2";
 
 const APP_ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
-  "./js/app.js",
-  "./js/domain.js",
   "./css/styles.css",
+
+  // Bootstrap
+  "./js/app.js",
+  "./js/app_legacy.js",
+
+  // Dominio legacy (aún usado) + refactor
+  "./js/domain.js",
+  "./js/domain/models.js",
+  "./js/domain/rules.js",
+  "./js/domain/services.js",
+
+  // Infra
+  "./js/infra/repository.js",
+  "./js/infra/storage.js",
+
+  // UI por capas (fase 6/7)
+  "./js/ui/controllers.js",
+  "./js/ui/dom.js",
+  "./js/ui/views.js",
+
+  // Icons
+  "./favicon.ico",
+  "./icons/icon-180.png",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];
