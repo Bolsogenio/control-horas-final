@@ -461,7 +461,6 @@ function renderHeader() {
 // PERSONAS + STORAGE
 // ==========================
 
-const STORAGE_KEY = "control-horas-personas";
 
 // Persona activa
 let personaActivaId = null;
@@ -749,34 +748,17 @@ window.crearPersona = (nombre, categoria, horasPorDia, libresPorQuincena, activa
 
 
 
+
 // ==========================
-// STORAGE ADAPTER (web hoy, mobile mañana)
+// JORNADAS - PERSISTENCIA
 // ==========================
-
-function storageLoadJornadas() {
-  try {
-    return jornadasRepo.loadLegacy();
-  } catch (e) {
-    console.error("storageLoadJornadas: error leyendo storage:", e);
-    return [];
-  }
-}
-
-function storageSaveJornadas(jornadas) {
-  try {
-    jornadasRepo.saveLegacy(jornadas);
-    return true;
-  } catch (e) {
-    console.error("storageSaveJornadas: error guardando storage:", e);
-    return false;
-  }
-}
-
-
+// Fase 3: la UI no toca localStorage. Toda persistencia pasa por repositorios.
+// En esta versión legacy, las jornadas se guardan dentro de la persona activa (guardarPersonas()).
 
 function guardarJornadas() {
   guardarPersonas();
 }
+
 
 
 // ==========================================================
@@ -804,7 +786,14 @@ window.limpiarJornadasFantasma80 = function limpiarJornadasFantasma80() {
   ;
 
 function cargarJornadas() {
-  const data = storageLoadJornadas();
+  const data = (() => {
+    try {
+      return jornadasRepo.loadLegacy();
+    } catch (e) {
+      console.error("cargarJornadas: error leyendo storage legacy:", e);
+      return [];
+    }
+  })();
   if (!Array.isArray(data) || data.length === 0) return;
 
   let huboMigracion = false;
