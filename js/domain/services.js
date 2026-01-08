@@ -1,6 +1,8 @@
 // js/domain/services.js
 // Casos de uso (servicios).
-// Fase 5 (Paso 1): Personas.
+// Fase 5:
+// - Paso 1: Personas
+// - Paso 2: Jornadas (por persona)
 // - No DOM
 // - No localStorage directo
 // - Todo va por repositorios (infra)
@@ -82,7 +84,7 @@ export function createServices({ personasRepo, jornadasRepo } = {}) {
     });
   }
 
-  /** Define persona activa. No toca jornadas; solo cambia el id activo y persiste. */
+  /** Define persona activa. */
   function personasSetActiva(id) {
     const { personas } = personasLoad();
     if (!id || !personas[id]) return false;
@@ -127,12 +129,75 @@ export function createServices({ personasRepo, jornadasRepo } = {}) {
     return { id, personaActivaId, personas };
   }
 
+  // ==========================
+  // JORNADAS (por persona)
+  // ==========================
+
+  function _getPersonaOrThrow(personas, personaId) {
+    if (!personaId) throw new Error("personaId requerido");
+    const p = personas?.[personaId];
+    if (!p) throw new Error(`Persona inexistente: ${personaId}`);
+    return p;
+  }
+
+  /** Carga jornadas de una persona (array) */
+  function jornadasLoad(personaId) {
+    const { personas } = personasLoad();
+    const p = _getPersonaOrThrow(personas, personaId);
+    const js = Array.isArray(p.jornadas) ? p.jornadas : [];
+    // devolvemos copia para no depender de referencia interna
+    return js.map((x) => ({ ...(x || {}) }));
+  }
+
+  /** Guarda jornadas completas de una persona. Devuelve personas actualizadas (raw). */
+  function jornadasSave(personaId, jornadas = []) {
+    const state = personasLoad();
+    const personas = state.personas;
+    const p = _getPersonaOrThrow(personas, personaId);
+
+    p.jornadas = Array.isArray(jornadas) ? jornadas : [];
+    personasSave({ personaActivaId: state.personaActivaId, personas });
+
+    return personas;
+  }
+
+  /**
+   * Upsert de una jornada por fecha ISO.
+   * jornada debe incluir {fecha:'YYYY-MM-DD', ...}.
+   * Devuelve personas actualizadas (raw).
+   */
+  function jornadasUpsert(personaId, jornada) {
+    if (!jornada || !jornada.fecha) throw new Error("jornada.fecha requerida");
+    const fecha = String(jornada.fecha);
+
+    const js = jornadasLoad(personaId);
+    const idx = js.findIndex((x) => x && String(x.fecha) === fecha);
+
+    if (idx >= 0) js[idx] = { ...(js[idx] || {}), ...(jornada || {}) };
+    else js.push({ ...(jornada || {}) });
+
+    return jornadasSave(personaId, js);
+  }
+
+  /** Elimina una jornada por fecha ISO. Devuelve personas actualizadas (raw). */
+  function jornadasRemove(personaId, fechaIso) {
+    const fecha = String(fechaIso || "");
+    const js = jornadasLoad(personaId).filter((x) => x && String(x.fecha) !== fecha);
+    return jornadasSave(personaId, js);
+  }
+
   return {
     personas: {
       load: personasLoad,
       save: personasSave,
       setActiva: personasSetActiva,
       crear: personasCrear,
+    },
+    jornadas: {
+      load: jornadasLoad,
+      save: jornadasSave,
+      upsert: jornadasUpsert,
+      remove: jornadasRemove,
     },
   };
 }

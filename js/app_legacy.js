@@ -5,6 +5,7 @@ const repos = createRepositories();
 const { jornadasRepo } = repos;
 const services = createServices(repos);
 const personasService = services.personas;
+const jornadasService = services.jornadas;
 
 function MAX_HORAS_DIA() {
   return 9;
@@ -474,6 +475,10 @@ let personas = {};
 // Alias usado por toda la app (NO cambiar el resto del código)
 let jornadas = [];
 
+// Activos (se setean al activar persona)
+let perfilActivo = null;
+let categoriaActiva = "CS";
+
 // Helper legacy: ids de personas
 function getPersonas() { return Object.keys(personas || {}); }
 function getPersonaActiva() { return personaActivaId; }
@@ -601,10 +606,7 @@ function cargarPersonas() {
 
 function guardarPersonas() {
   try {
-    if (personaActivaId && personas[personaActivaId]) {
-      personas[personaActivaId].jornadas = jornadas;
-    }
-
+    // Paso 5.2: jornadas se guardan por JornadasService; acá solo persistimos PERSONAS (metadata).
     personasService.save({
       personaActivaId,
       personas,
@@ -640,24 +642,29 @@ function perfilDesdePersona(p) {
 function activarPersona(id, opts = {}) {
   const { render = true, persistir = true } = opts;
 
-  if (!id || !personas[id]) {
-    console.warn("activarPersona: id inválido:", id);
-    return false;
-  }
+  if (!id || !personas[id]) return false;
 
   personaActivaId = id;
 
-  // 1) jornadas pasan a apuntar a la persona activa
-  jornadas = personas[id].jornadas || [];
+  // Perfil/categoría activa (desde PERSONAS en memoria)
+  perfilActivo = personas[id].perfil || perfilActivo;
+  categoriaActiva = (personas[id].categoria || categoriaActiva);
 
-  // 2) PERFIL_ACTUAL depende de la persona activa
-  CATEGORIA_ACTUAL = (personas[id]?.categoria || "CS");
-  PERFIL_ACTUAL = perfilDesdePersona(personas[id]);
+  // Jornadas: se cargan por servicio (no desde personas[id].jornadas directo)
+  const js = (() => {
+    try { return jornadasService.load(id); } catch { return []; }
+  })();
 
-  // 3) Persistir + render
-  if (persistir) guardarPersonas();
+  jornadas.length = 0;
+  if (Array.isArray(js) && js.length) jornadas.push(...js);
+
+  if (persistir) {
+    // Solo persistimos persona activa (PERSONAS)
+    try { personasService.setActiva(id); } catch {}
+  }
+
   if (render) {
-    renderHeader();
+    renderSelectorPersonas();
     renderCalendar();
     renderResumen();
   }
@@ -724,7 +731,16 @@ function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar
 // En esta versión legacy, las jornadas se guardan dentro de la persona activa (guardarPersonas()).
 
 function guardarJornadas() {
-  guardarPersonas();
+  try {
+    if (!personaActivaId) return;
+    // Guardado de jornadas por persona (Fase 5 – Paso 2)
+    const updated = jornadasService.save(personaActivaId, jornadas);
+    if (updated && typeof updated === "object") {
+      personas = updated;
+    }
+  } catch (e) {
+    console.error("guardarJornadas: error:", e);
+  }
 }
 
 
@@ -754,15 +770,24 @@ window.limpiarJornadasFantasma80 = function limpiarJornadasFantasma80() {
   ;
 
 function cargarJornadas() {
+  if (!personaActivaId) {
+    jornadas.length = 0;
+    return;
+  }
+
   const data = (() => {
     try {
-      return jornadasRepo.loadLegacy();
+      return jornadasService.load(personaActivaId);
     } catch (e) {
-      console.error("cargarJornadas: error leyendo storage legacy:", e);
+      console.error("cargarJornadas: error:", e);
       return [];
     }
   })();
-  if (!Array.isArray(data) || data.length === 0) return;
+
+  if (!Array.isArray(data) || data.length === 0) {
+    jornadas.length = 0;
+    return;
+  }
 
   let huboMigracion = false;
 
@@ -770,18 +795,35 @@ function cargarJornadas() {
     .map((j) => {
       if (!j || !j.fecha) return null;
 
-      // Normaliza DMY/Date/ISO a ISO YYYY-MM-DD
-      const iso = dn_normalizarFecha(j.fecha);
-      if (!iso) return null;
+      // Soportar viejos formatos: 'DD/MM/YYYY' o 'YYYY-MM-DD'
+      let iso = String(j.fecha);
+      const m = iso.match(/^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s*$/);
+      if (m) {
+        const dd = String(m[1]).padStart(2, "0");
+        const mm = String(m[2]).padStart(2, "0");
+        const yyyy = m[3];
+        iso = `${yyyy}-${mm}-${dd}`;
+        huboMigracion = true;
+      }
 
-      if (j.fecha !== iso) huboMigracion = true;
+      // Validación mínima de ISO
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(iso)) return null;
 
       return {
-        ...j,
+        crupier: Number(j.crupier || 0),
+        supervisor: Number(j.supervisor || 0),
+        falta: !!j.falta,
+        libre: !!j.libre,
+        libreTrabajado: !!j.libreTrabajado,
+        compensado: !!j.compensado,
+        licAnual: !!j.licAnual,
+        licEnfermedad: !!j.licEnfermedad,
+        licSinGoce: !!j.licSinGoce,
         fecha: iso,
       };
     })
-    .filter(Boolean);
+    .filter(Boolean)
+    .sort((a, b) => String(a.fecha).localeCompare(String(b.fecha)));
 
   // mantener referencia del array original
   jornadas.length = 0;
