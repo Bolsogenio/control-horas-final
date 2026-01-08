@@ -1,4 +1,6 @@
-import { Storage } from "./infra/storage.js";
+import { createRepositories } from "./infra/repository.js";
+
+const { personasRepo, jornadasRepo } = createRepositories();
 
 function MAX_HORAS_DIA() {
   return 9;
@@ -484,13 +486,13 @@ const DIA_DEFAULT = () => (ES_SOLO_SUP()
 
 function cargarPersonas() {
   try {
-    const state = Storage.loadPersonasState();
+    const state = personasRepo.loadState();
 
     // --- Caso 1: storage nuevo vacío ---
     // Si no hay datos en el storage nuevo, NO crear Persona 1 automáticamente.
     // Solo migramos desde el esquema viejo si existen jornadas viejas reales.
     if (!state) {
-      const legacyJornadas = Storage.loadLegacyJornadas();
+      const legacyJornadas = jornadasRepo.loadLegacy();
 
       if (Array.isArray(legacyJornadas) && legacyJornadas.length > 0) {
         personas = {
@@ -553,7 +555,7 @@ function guardarPersonas() {
       personas[personaActivaId].jornadas = jornadas;
     }
 
-    Storage.savePersonasState({
+    personasRepo.saveState({
       personaActivaId,
       personas,
     });
@@ -680,7 +682,7 @@ window.crearPersona = (nombre, categoria, horasPorDia, libresPorQuincena, activa
 
 function storageLoadJornadas() {
   try {
-    return Storage.loadLegacyJornadas();
+    return jornadasRepo.loadLegacy();
   } catch (e) {
     console.error("storageLoadJornadas: error leyendo storage:", e);
     return [];
@@ -689,7 +691,7 @@ function storageLoadJornadas() {
 
 function storageSaveJornadas(jornadas) {
   try {
-    Storage.saveLegacyJornadas(jornadas);
+    jornadasRepo.saveLegacy(jornadas);
     return true;
   } catch (e) {
     console.error("storageSaveJornadas: error guardando storage:", e);
