@@ -31,10 +31,7 @@
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
-
-  /* TODAS las filas iguales */
   grid-auto-rows: 76px;
-
   max-width: 520px;
   margin-left: auto;
   margin-right: auto;
@@ -134,11 +131,6 @@
   border-bottom: 1px solid rgba(255,255,255,.12);
 }
 
-.mj-title{
-  font-size: 16px;
-  font-weight: 700;
-}
-
 .mj-body{
   display: grid;
   grid-template-columns: 1fr 200px;
@@ -166,13 +158,6 @@
   background: rgba(255,255,255,.08);
   color: #fff;
   outline: none;
-}
-
-/* sin flechitas */
-.mj-label input[type="number"]::-webkit-outer-spin-button,
-.mj-label input[type="number"]::-webkit-inner-spin-button{
-  -webkit-appearance: none;
-  margin: 0;
 }
 
 .mj-col-right{
@@ -218,76 +203,18 @@
   background: rgba(255,255,255,.12);
 }
 
-.mj-msg{
-  margin-top: 6px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(255, 80, 80, .18);
-  border: 1px solid rgba(255, 80, 80, .35);
-  font-size: 12px;
-}
-
-@media (max-width: 420px){
-  .mj-body{
-    grid-template-columns: 1fr;
-  }
-  .mj-col-right{
-    border-left: 0;
-    padding-left: 0;
-    border-top: 1px solid rgba(255,255,255,.12);
-    padding-top: 10px;
-  }
-}
-
-.mj-info{
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(255,255,255,.08);
-  border: 1px solid rgba(255,255,255,.14);
-  font-size: 13px;
-  line-height: 1.25;
-}
-
-.mj-cambiando{
-  margin-top: 8px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: rgba(80, 180, 255, .12);
-  border: 1px solid rgba(80, 180, 255, .28);
-  font-size: 13px;
-}
-
 #modalJornada[hidden] {
   display: none !important;
 }
 
-#listaJornadas {
-  display: none;
-}
+/* ===== Setup primera persona ===== */
 
-/* iOS Safari: evitar auto-zoom */
-#modalJornada .mj-label input{
-  font-size: 16px;
-}
-/* ===== Setup primera persona (empty state) ===== */
 .setup-card {
   border: 1px solid rgba(0,0,0,.12);
   border-radius: 12px;
-  padding: 14px 14px 12px;
+  padding: 14px;
   margin: 10px 0 14px;
-  background: rgba(255,255,255,.9);
-}
-
-.setup-card h3 {
-  margin: 0 0 6px;
-  font-size: 1.1rem;
-}
-
-.setup-sub {
-  margin: 0 0 12px;
-  opacity: .8;
-  line-height: 1.35;
+  background: rgba(255,255,255,.95);
 }
 
 .setup-grid {
@@ -297,34 +224,38 @@
 }
 
 .setup-field span {
-  display: block;
   font-size: .85rem;
   opacity: .85;
-  margin-bottom: 4px;
 }
 
 .setup-field input,
 .setup-field select {
   width: 100%;
-  padding: 10px 10px;
+  padding: 10px;
   border-radius: 10px;
   border: 1px solid rgba(0,0,0,.15);
-  outline: none;
 }
 
+/* 🔴 CLAVE DEL PASO ACTUAL */
+/* TODOS los botones del setup se ven iguales */
 .setup-actions {
   display: flex;
-  align-items: center;
   gap: 12px;
   margin-top: 12px;
 }
 
-.btn-primary {
+.setup-actions button {
   padding: 10px 14px;
   border-radius: 10px;
   border: 0;
-  cursor: pointer;
   font-weight: 600;
+  cursor: pointer;
+  background: #2563eb;
+  color: #fff;
+}
+
+.setup-actions button:hover {
+  background: #1d4ed8;
 }
 
 .setup-msg {
@@ -334,7 +265,7 @@
 
 /* Responsive */
 @media (max-width: 640px) {
-  .setup-grid { grid-template-columns: 1fr; }
+  .setup-grid {
+    grid-template-columns: 1fr;
+  }
 }
-
-
