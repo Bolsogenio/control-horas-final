@@ -1753,7 +1753,7 @@ function bindPersonaSetup() {
 
     const categoria = document.getElementById("psCategoria")?.value || "cs";
     const horasPorDia = clamp(document.getElementById("psHoras")?.value, 0.5, 9, 8);
-    const libresPorQuincena = clamp(document.getElementById("psLibres")?.value, 3, 12, 3);
+    const libresPorQuincena = clamp(document.getElementById("psLibres")?.value, 2, 12, 3);
 
     crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, true);
     guardarPersonas();

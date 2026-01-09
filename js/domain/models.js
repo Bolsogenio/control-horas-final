@@ -49,7 +49,7 @@ export class Perfil {
 
     // Normalizamos a números válidos para el negocio (múltiplos de 0.5)
     const h = _roundToHalf(_clamp(_toNumberOr(horasPorDia, 8), 0.5, 24));
-    const l = Math.round(_clamp(_toNumberOr(libresPorQuincena, 3), 0, 14));
+    const l = Math.round(_clamp(_toNumberOr(libresPorQuincena, 3), 2, 12));
     const t = topeQuincena === null ? null : _toNumberOr(topeQuincena, null);
 
     this.horasPorDia = h;
