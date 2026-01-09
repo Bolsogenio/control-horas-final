@@ -728,7 +728,7 @@ function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar
   // redondeo a múltiplos de 0.5
   const horas = Math.round(h * 2) / 2;
 
-  const libres = Math.round(_clampNumero(libresPorQuincena, 2, 14, 3));
+  const libres = Math.round(_clampNumero(libresPorQuincena, 2, 12, 3));
 
   personas[id] = {
     nombre: nombreOk,
