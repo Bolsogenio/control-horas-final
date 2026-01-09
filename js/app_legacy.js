@@ -310,23 +310,14 @@ function renderCalendarGrid() {
 
     if (!esFuturo) {
       cell.addEventListener("click", () => {
-        let idx = jornadas.findIndex((j) => dn_normalizarFecha(j?.fecha) === fechaKey);
+        let idx = ensurePlaceholderJornada(fechaKey);
 
-        if (idx === -1) {
-          jornadas.push({
-            fecha: fechaKey, // ✅ ISO en storage
-            crupier: 0,
-            supervisor: 0,
-            falta: false,
-            libre: false,
-            libreTrabajado: false,
-            compensado: false,
-            licAnual: false,
-            licEnfermedad: false,
-            licSinGoce: false,
-          });
+        // Si acabamos de crear placeholder, persistimos para que no se pierda si recarga.
+        // (Si ya existía, no hace falta persistir acá.)
+        if (idx !== -1 && jornadas[idx] && jornadas[idx].fecha === dn_normalizarFecha(fechaKey)) {
+          // Si la jornada era nueva, el map no la tenía antes; para no complicar lógica,
+          // persistimos siempre que el índice haya quedado saneado.
           guardarJornadas();
-          idx = jornadas.length - 1;
         }
 
         abrirModalJornada(idx);
@@ -484,6 +475,118 @@ let personas = {};
 // Alias usado por toda la app (NO cambiar el resto del código)
 let jornadas = [];
 
+
+// Índice en memoria (NO se persiste). Clave: "YYYY-MM-DD" (fecha ISO LOCAL normalizada)
+let jornadasByFecha = new Map();
+
+function rebuildJornadasIndex() {
+  // 1) Normaliza fechas + elimina duplicados por fecha (se queda con la última)
+  if (!Array.isArray(jornadas)) {
+    jornadas = [];
+  }
+
+  const usados = new Set();
+  const uniqueRev = [];
+
+  for (let i = jornadas.length - 1; i >= 0; i--) {
+    const j = jornadas[i];
+    if (!j) continue;
+    const iso = dn_normalizarFecha(j.fecha);
+    if (!iso) continue;
+
+    if (usados.has(iso)) continue; // elimina duplicado (se conserva la última ocurrencia)
+    usados.add(iso);
+
+    if (j.fecha !== iso) j.fecha = iso; // normalizar in-place
+    uniqueRev.push(j);
+  }
+
+  uniqueRev.reverse();
+
+  // Mantener la MISMA referencia de array (importante para el resto del código)
+  jornadas.length = 0;
+  jornadas.push(...uniqueRev);
+
+  // 2) Reconstruir map
+  jornadasByFecha = new Map();
+  for (const j of jornadas) {
+    const iso = dn_normalizarFecha(j?.fecha);
+    if (!iso) continue;
+    // j ya está normalizada arriba, pero por seguridad:
+    j.fecha = iso;
+    jornadasByFecha.set(iso, j);
+  }
+}
+
+function getJornadaByFecha(fechaIso) {
+  const key = dn_normalizarFecha(fechaIso);
+  if (!key) return undefined;
+  if (!jornadasByFecha || !(jornadasByFecha instanceof Map) || jornadasByFecha.size === 0) {
+    rebuildJornadasIndex();
+  }
+  return jornadasByFecha.get(key);
+}
+
+function findIndexJornadaPorFecha(fechaIso) {
+  const key = dn_normalizarFecha(fechaIso);
+  if (!key) return -1;
+  // El map asegura que como máximo hay 1 por fecha, así que este findIndex es seguro.
+  return jornadas.findIndex((j) => dn_normalizarFecha(j?.fecha) === key);
+}
+
+function ensurePlaceholderJornada(fechaIso) {
+  const key = dn_normalizarFecha(fechaIso);
+  if (!key) return -1;
+
+  // Asegurar índice listo
+  if (!jornadasByFecha || !(jornadasByFecha instanceof Map)) {
+    jornadasByFecha = new Map();
+  }
+  if (jornadasByFecha.size === 0 && Array.isArray(jornadas) && jornadas.length) {
+    rebuildJornadasIndex();
+  }
+
+  // Ya existe
+  if (jornadasByFecha.has(key)) {
+    const idx = findIndexJornadaPorFecha(key);
+    return idx;
+  }
+
+  // Crear placeholder vacío
+  const nueva = {
+    fecha: key, // ✅ ISO en storage (LOCAL normalizado)
+    crupier: 0,
+    supervisor: 0,
+    falta: false,
+    libre: false,
+    libreTrabajado: false,
+    compensado: false,
+    licAnual: false,
+    licEnfermedad: false,
+    licSinGoce: false,
+  };
+
+  jornadas.push(nueva);
+  jornadasByFecha.set(key, nueva);
+
+  return jornadas.length - 1;
+}
+
+function removeJornadaAtIndex(idx) {
+  if (idx === null || idx === undefined) return;
+  const i = Number(idx);
+  if (!Number.isFinite(i)) return;
+  const j = jornadas[i];
+  if (j && j.fecha) {
+    const key = dn_normalizarFecha(j.fecha);
+    if (key && jornadasByFecha && jornadasByFecha instanceof Map) {
+      jornadasByFecha.delete(key);
+    }
+  }
+  jornadas.splice(i, 1);
+}
+
+
 // ==========================
 // APP STATE (flujo UI)
 // ==========================
@@ -600,6 +703,7 @@ function cargarPersonas() {
         personas = {};
         personaActivaId = null;
         jornadas = [];
+        jornadasByFecha = new Map();
       }
 
       return;
@@ -684,6 +788,8 @@ function activarPersona(id, opts = {}) {
 
   // 1) jornadas pasan a apuntar a la persona activa
   jornadas = personas[id].jornadas || [];
+  // 1.b) reconstruir índice en memoria (map por fecha) y sanear duplicados/fechas
+  rebuildJornadasIndex();
 
   // 2) PERFIL_ACTUAL depende de la persona activa
   CATEGORIA_ACTUAL = (personas[id]?.categoria || "CS");
@@ -832,6 +938,8 @@ function cargarJornadas() {
   // mantener referencia del array original
   jornadas.length = 0;
   jornadas.push(...normalizadas);
+  // Reconstruir índice en memoria + eliminar duplicados
+  rebuildJornadasIndex();
 
   // Si migramos, re-guardamos para no repetir conversiones
   if (huboMigracion) {
@@ -842,10 +950,7 @@ function cargarJornadas() {
 
 
 function buscarJornadaPorFecha(fecha) {
-  const key = dn_normalizarFecha(fecha);
-  if (!key) return undefined;
-
-  return jornadas.find((j) => dn_normalizarFecha(j?.fecha) === key);
+  return getJornadaByFecha(fecha);
 }
 
 
@@ -1405,7 +1510,7 @@ function cerrarModalJornada() {
       const sinFlags = !j.falta && !j.libre && !j.libreTrabajado && !j.compensado && !j.licAnual && !j.licEnfermedad && !j.licSinGoce;
 
       if (sinFlags && cr === 0 && sup === 0) {
-        jornadas.splice(_mjIndexActual, 1);
+        removeJornadaAtIndex(_mjIndexActual);
         guardarJornadas();
         renderCalendar();
       }
@@ -1706,7 +1811,7 @@ export function legacyInit() {
     // ===============================
     const defCS = DIA_DEFAULT();
     if (tipo === "normal" && _mjTempCr === defCS.cr && supVal === defCS.sup) {
-      jornadas.splice(_mjIndexActual, 1);
+      removeJornadaAtIndex(_mjIndexActual);
       guardarJornadas();
       cerrarModalJornada();
       renderCalendar();
