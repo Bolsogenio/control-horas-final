@@ -1831,6 +1831,24 @@ function bindPersonaSetup() {
     setAppState(APP_STATES.READY);
     renderByAppState();
   });
+
+  // Bind del botón "Cancelar" del setup (si existe)
+  const btnCancel = document.getElementById("psCancelarBtn");
+  if (btnCancel) {
+    btnCancel.addEventListener("click", () => {
+      // Solo UI: cerrar el formulario y volver a la pantalla anterior
+      setMsg("");
+      psMostrarSetup(false);
+
+      // Si ya hay personas, volvemos a READY y re-renderizamos
+      const ids = Object.keys(personas || {});
+      if (ids.length > 0) {
+        setAppState(APP_STATES.READY);
+        renderByAppState();
+      }
+    });
+  }
+
 }
 
 // Compat: si algo lo llama desde afuera, lo mantenemos.
