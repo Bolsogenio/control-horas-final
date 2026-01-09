@@ -13,7 +13,9 @@ function UI() {
 const { personasRepo, jornadasRepo } = createRepositories();
 
 function MAX_HORAS_DIA() {
-  return 9;
+  // Usa el perfil de la persona activa (si existe). Fallback seguro: 8.
+  const v = Number(PERFIL_ACTUAL?.maxHorasDia ?? PERFIL_ACTUAL?.horasPorDia);
+  return (Number.isFinite(v) && v > 0) ? v : 8;
 }
 
 const MONTHS = [
@@ -24,7 +26,9 @@ const MONTHS = [
 
 
 function MAX_LIBRES_QUINCENA() {
-  return 12;
+  // Usa el perfil de la persona activa (si existe). Fallback seguro: 3.
+  const v = Number(PERFIL_ACTUAL?.maxLibresQuincena ?? PERFIL_ACTUAL?.libresPorQuincena);
+  return (Number.isFinite(v) && v > 0) ? Math.round(v) : 3;
 }
 
 
@@ -1209,6 +1213,71 @@ function _mjActualizarLeyendas() {
 
 
 
+const aplicarUIporTipo = () => {
+  const tipo = _mjGetTipo();
+  const cr = _mjEl("mjCrupier");
+  const sup = _mjEl("mjSupervisor");
+  const btnOk = _mjEl("mjOk");
+
+  const habil = dn_horasHabilitadas(tipo);
+
+  cr.disabled = !habil;
+  sup.disabled = !habil;
+
+  const lblCr = _mjLabelDeInput("mjCrupier");
+  const lblSup = _mjLabelDeInput("mjSupervisor");
+
+  _mjMostrarMsg("");
+
+  // =========================
+  // TIPOS SIN HORAS
+  // =========================
+  if (!habil) {
+    if (lblCr) lblCr.hidden = true;
+    if (lblSup) lblSup.hidden = true;
+    if (btnOk) btnOk.textContent = "Continuar";
+
+    cr.value = "0";
+    sup.value = "0";
+
+    _mjTempCr = 0;
+    _mjPaso = "cr";
+    _mjTipoPrev = tipo;
+    return;
+  }
+
+  // =========================
+  // TIPOS CON HORAS
+  // =========================
+
+  // Si venimos de un tipo SIN horas y pasamos a NORMAL o LIBRE TRABAJADO,
+  // forzar siempre el mismo comportamiento: 8/0 con selección.
+  if (
+    (tipo === "normal" || tipo === "libreTrabajado") &&
+    _mjTipoPrev &&
+    _mjTipoPrev !== tipo
+  ) {
+    cr.value = String(MAX_HORAS_DIA());
+    sup.value = "0";
+    setTimeout(() => {
+      cr.focus();
+      cr.select(); // ← deja el valor seleccionado (azul)
+    }, 0);
+  }
+
+  if (lblCr) lblCr.hidden = false;
+  if (lblSup) lblSup.hidden = true;
+
+  _mjPaso = "cr";
+  if (btnOk) btnOk.textContent = "Aceptar";
+
+  setTimeout(() => {
+    cr.focus();
+    cr.select();
+  }, 0);
+
+  _mjTipoPrev = tipo;
+};
 
 function _mjLeerHoras() {
   const crTxt = (_mjEl("mjCrupier").value || "").trim().replace(",", ".");
@@ -1753,7 +1822,7 @@ function bindPersonaSetup() {
 
     const categoria = document.getElementById("psCategoria")?.value || "cs";
     const horasPorDia = clamp(document.getElementById("psHoras")?.value, 0.5, 9, 8);
-    const libresPorQuincena = clamp(document.getElementById("psLibres")?.value, 2, 12, 3);
+    const libresPorQuincena = clamp(document.getElementById("psLibres")?.value, 3, 12, 3);
 
     crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, true);
     guardarPersonas();
