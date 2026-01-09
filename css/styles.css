@@ -148,6 +148,25 @@
   opacity: .95;
 }
 
+/* Mensajes del modal (errores / avisos) */
+.mj-msg{
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+
+  /* recuadro finito rojo */
+  border: 1px solid rgba(255, 80, 80, .55);
+  background: rgba(255, 80, 80, .10);
+
+  /* letra accesible */
+  font-size: 0.9rem;
+  line-height: 1.35;
+}
+
+
+
+
+
 .mj-label input{
   margin-top: 6px;
   width: 72px;
