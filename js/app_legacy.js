@@ -683,10 +683,14 @@ const DIA_DEFAULT = () => (ES_SOLO_SUP()
 );
 
 
+
+
+
+
+
 // ==========================
 // CARGA DESDE STORAGE
 // ==========================
-
 function cargarPersonas() {
   try {
     const state = personasRepo.loadState();
@@ -727,6 +731,16 @@ function cargarPersonas() {
     personas = state.personas || {};
     personaActivaId = state.personaActivaId;
 
+    // Limpieza: si ya existe storage nuevo, vaciamos legacy para evitar confusión
+    try {
+      const legacy = jornadasRepo.loadLegacy();
+      if (Array.isArray(legacy) && legacy.length > 0) {
+        jornadasRepo.saveLegacy([]);
+      }
+    } catch (e) {
+      console.warn("No se pudo limpiar legacy jornadas:", e);
+    }
+
     if (!personaActivaId || !personas[personaActivaId]) {
       personaActivaId = Object.keys(personas)[0] || null;
     }
@@ -744,8 +758,6 @@ function cargarPersonas() {
     jornadas = [];
   }
 }
-
-
 
 
 
