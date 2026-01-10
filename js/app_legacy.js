@@ -1981,7 +1981,7 @@ window._psBindCrearPersona = function _psBindCrearPersona() {
 
   // ===== INIT PERSONAS/UI (un solo flujo) =====
   cargarPersonas();
-  cargarJornadas();
+  // cargarJornadas();  // DESACTIVADO: las jornadas viven dentro de cada persona (evita pisadas/intermitencia)
   bindCalendarNav();
 
   // Bind setup (crear persona) una sola vez
