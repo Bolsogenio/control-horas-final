@@ -1972,7 +1972,6 @@ function bindPersonaSetup() {
     const libresPorQuincena = clamp(document.getElementById("psLibres")?.value, 3, 12, 3);
 
     crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, true);
-    guardarPersonas();
 
     // Transición de estado: al crear, pasamos a READY.
     setAppState(APP_STATES.READY);
