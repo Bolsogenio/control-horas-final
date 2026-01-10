@@ -830,35 +830,42 @@ function perfilDesdePersona(p) {
   };
 }
 
-function activarPersona(id, opts = {}) {
-  const { render = true, persistir = true } = opts;
 
-  if (!id || !personas[id]) {
-    console.warn("activarPersona: id inválido:", id);
-    return false;
+
+function activarPersona(personaId, opts = {}) {
+  const {
+    render = true,
+    persistir = true,
+  } = opts;
+
+  if (!personas || !personas[personaId]) {
+    console.warn("activarPersona: persona inexistente", personaId);
+    return;
   }
 
-  personaActivaId = id;
+  personaActivaId = personaId;
 
-  // 1) jornadas pasan a apuntar a la persona activa
-  jornadas = personas[id].jornadas || [];
-  // 1.b) reconstruir índice en memoria (map por fecha) y sanear duplicados/fechas
+  // 1) Jornadas SIEMPRE desde la persona activa
+  jornadas = Array.isArray(personas[personaId].jornadas)
+    ? personas[personaId].jornadas
+    : [];
+
+  // 2) Reconstruir índice SIEMPRE (fuente única de verdad)
   rebuildJornadasIndex();
 
-  // 2) PERFIL_ACTUAL depende de la persona activa
-  CATEGORIA_ACTUAL = (personas[id]?.categoria || "CS");
-  PERFIL_ACTUAL = perfilDesdePersona(personas[id]);
-
-  // 3) Persistir + render
-  if (persistir) guardarPersonas();
-  if (render) {
-    renderHeader();
-    renderCalendar();
-    renderResumen();
+  // 3) Persistir estado si corresponde
+  if (persistir) {
+    guardarPersonas();
   }
 
-  return true;
+  // 4) Render controlado
+  if (render) {
+    renderByAppState();
+  }
 }
+
+
+
 
 // Exponer para test manual (sin UI por ahora)
 window.setPersonaActiva = (id) => activarPersona(id, { render: true, persistir: true });
