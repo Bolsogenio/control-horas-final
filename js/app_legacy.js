@@ -753,21 +753,24 @@ function cargarPersonas() {
 // GUARDAR
 // ==========================
 
+
+
 function guardarPersonas() {
   try {
-    // 1) Traer el state actual del storage (si existe) para NO perder nada
+    // 1) Traer lo que ya hay guardado para NO perder nada
     const stored = personasRepo.loadState() || null;
-    const storedPersonas = (stored && stored.personas && typeof stored.personas === "object")
-      ? stored.personas
-      : {};
+    const storedPersonas =
+      stored && stored.personas && typeof stored.personas === "object"
+        ? stored.personas
+        : {};
 
-    // 2) Merge: lo del storage + lo de memoria (memoria gana)
+    // 2) Merge: storage + memoria (memoria gana)
     const mergedPersonas = {
       ...storedPersonas,
       ...(personas && typeof personas === "object" ? personas : {}),
     };
 
-    // 3) Asegurar que la persona activa guardará SUS jornadas actuales
+    // 3) La persona activa siempre guarda SUS jornadas actuales
     if (personaActivaId && mergedPersonas[personaActivaId]) {
       mergedPersonas[personaActivaId] = {
         ...mergedPersonas[personaActivaId],
@@ -775,7 +778,7 @@ function guardarPersonas() {
       };
     }
 
-    // 4) Persistir state completo (sin reemplazar por “solo la activa”)
+    // 4) Persistir el state completo
     const newState = {
       personaActivaId: personaActivaId || stored?.personaActivaId || null,
       personas: mergedPersonas,
@@ -783,13 +786,16 @@ function guardarPersonas() {
 
     personasRepo.saveState(newState);
 
-    // 5) Mantener memoria alineada con lo persistido
+    // 5) Mantener memoria alineada
     personas = mergedPersonas;
     personaActivaId = newState.personaActivaId;
   } catch (e) {
     console.error("Error guardando personas:", e);
   }
 }
+
+
+
 
 // ==========================
 // PERSONA ACTIVA (cambio de persona)
