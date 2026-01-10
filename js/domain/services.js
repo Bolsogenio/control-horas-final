@@ -129,6 +129,40 @@ export function createServices({ personasRepo, jornadasRepo } = {}) {
     return { id, personaActivaId, personas };
   }
 
+  /**
+   * Borra una persona por id. Persiste.
+   * Reglas:
+   * - si no existe: no rompe, devuelve deleted:false
+   * - si era activa: reasigna otra o null
+   * Devuelve { deleted, personaActivaId, personas }
+   */
+  function personasBorrar(id) {
+    const state = personasLoad();
+    const personas = state.personas;
+
+    const pid = String(id || "");
+    if (!pid || !personas[pid]) {
+      return { deleted: false, personaActivaId: state.personaActivaId ?? null, personas };
+    }
+
+    delete personas[pid];
+
+    let personaActivaId = state.personaActivaId ?? null;
+
+    // Si borramos la activa, elegimos otra
+    if (personaActivaId === pid) {
+      personaActivaId = Object.keys(personas)[0] || null;
+    }
+
+    // Si quedó algo raro, normalizamos
+    if (personaActivaId && !personas[personaActivaId]) {
+      personaActivaId = Object.keys(personas)[0] || null;
+    }
+
+    personasSave({ personaActivaId, personas });
+    return { deleted: true, personaActivaId, personas };
+  }
+
   // ==========================
   // JORNADAS (por persona)
   // ==========================
@@ -192,6 +226,7 @@ export function createServices({ personasRepo, jornadasRepo } = {}) {
       save: personasSave,
       setActiva: personasSetActiva,
       crear: personasCrear,
+      borrar: personasBorrar,
     },
     jornadas: {
       load: jornadasLoad,
