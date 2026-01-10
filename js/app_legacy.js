@@ -755,19 +755,41 @@ function cargarPersonas() {
 
 function guardarPersonas() {
   try {
-    if (personaActivaId && personas[personaActivaId]) {
-      personas[personaActivaId].jornadas = jornadas;
+    // 1) Traer el state actual del storage (si existe) para NO perder nada
+    const stored = personasRepo.loadState() || null;
+    const storedPersonas = (stored && stored.personas && typeof stored.personas === "object")
+      ? stored.personas
+      : {};
+
+    // 2) Merge: lo del storage + lo de memoria (memoria gana)
+    const mergedPersonas = {
+      ...storedPersonas,
+      ...(personas && typeof personas === "object" ? personas : {}),
+    };
+
+    // 3) Asegurar que la persona activa guardará SUS jornadas actuales
+    if (personaActivaId && mergedPersonas[personaActivaId]) {
+      mergedPersonas[personaActivaId] = {
+        ...mergedPersonas[personaActivaId],
+        jornadas: Array.isArray(jornadas) ? jornadas : [],
+      };
     }
 
-    personasRepo.saveState({
-      personaActivaId,
-      personas,
-    });
+    // 4) Persistir state completo (sin reemplazar por “solo la activa”)
+    const newState = {
+      personaActivaId: personaActivaId || stored?.personaActivaId || null,
+      personas: mergedPersonas,
+    };
+
+    personasRepo.saveState(newState);
+
+    // 5) Mantener memoria alineada con lo persistido
+    personas = mergedPersonas;
+    personaActivaId = newState.personaActivaId;
   } catch (e) {
     console.error("Error guardando personas:", e);
   }
 }
-
 
 // ==========================
 // PERSONA ACTIVA (cambio de persona)
