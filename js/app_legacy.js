@@ -283,8 +283,6 @@ function renderResumen() {
   document.getElementById("sumQuincenaText").textContent = partes.join(" // ");
 }
 
-
-
 function renderCalendarGrid() {
   const grid = document.getElementById("calendarGrid");
   grid.innerHTML = "";
@@ -313,9 +311,6 @@ function renderCalendarGrid() {
     const summary = document.createElement("div");
     summary.className = "cal-summary";
 
-    // UI (solo visual)
-    const fechaUI = formatDate(d);
-
     // KEY real (storage / comparaciones)
     const fechaKey = dn_toISODate(d);
 
@@ -326,11 +321,7 @@ function renderCalendarGrid() {
       cell.addEventListener("click", () => {
         let idx = ensurePlaceholderJornada(fechaKey);
 
-        // Si acabamos de crear placeholder, persistimos para que no se pierda si recarga.
-        // (Si ya existía, no hace falta persistir acá.)
         if (idx !== -1 && jornadas[idx] && jornadas[idx].fecha === dn_normalizarFecha(fechaKey)) {
-          // Si la jornada era nueva, el map no la tenía antes; para no complicar lógica,
-          // persistimos siempre que el índice haya quedado saneado.
           guardarJornadas();
         }
 
@@ -348,7 +339,6 @@ function renderCalendarGrid() {
       const cr = Number(j.crupier) || 0;
       const sup = Number(j.supervisor) || 0;
 
-      // Formato único para horas (NORMAL y LIBRE TRAB. parcial)
       const fmtCS = (cr, sup) => {
         const total = cr + sup;
         const desc = Math.max(0, MAX_HORAS_DIA() - total);
@@ -383,7 +373,6 @@ function renderCalendarGrid() {
       } else if (tipo === "libreTrabajado") {
         const total = cr + sup;
 
-        // ✅ Caso estándar (día completo): solo etiqueta
         const def = DIA_DEFAULT();
         if (cr === def.cr && sup === def.sup && total === MAX_HORAS_DIA()) {
           summary.textContent = "LIBRE TRAB.";
@@ -395,8 +384,9 @@ function renderCalendarGrid() {
 
       } else {
         // NORMAL
-        // ✅ Si es el día completo de Supervisor (solo S), mostrar SUPER
-        if (ES_SOLO_SUP() && cr === 0 && sup === MAX_HORAS_DIA()) {
+
+        // ✅ REGLA NUEVA: si es día completo SOLO Supervisor (cr=0 y sup=max), mostrar SUPER (también en CS)
+        if (cr === 0 && sup === MAX_HORAS_DIA()) {
           summary.textContent = "SUPER";
         } else {
           summary.textContent = fmtCS(cr, sup);
@@ -407,14 +397,11 @@ function renderCalendarGrid() {
       summary.textContent = "";
     }
 
-    // (fechaUI no se usa acá, pero lo dejamos declarado por si más adelante
-    // querés tooltip/label; hoy no afecta nada)
     cell.appendChild(num);
     cell.appendChild(summary);
     grid.appendChild(cell);
   }
 }
-
 
 
 
