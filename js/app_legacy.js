@@ -541,12 +541,10 @@ function getJornadaByFecha(fechaIso) {
   return jornadasByFecha.get(key);
 }
 
+
+
 function borrarPersonaActiva() {
   if (!personaActivaId || !personas || !personas[personaActivaId]) return false;
-
-  const nombre = personas[personaActivaId]?.nombre || personaActivaId;
-  const ok = window.confirm(`¿Borrar "${nombre}"? Esta acción no se puede deshacer.`);
-  if (!ok) return false;
 
   const idBorrada = personaActivaId;
 
