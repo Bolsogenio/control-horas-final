@@ -713,6 +713,9 @@ function renderByAppState() {
 
   // En NO_PERSONAS, dejamos el selector vacío (si existe) y sin interacción.
   if (sel) sel.innerHTML = "";
+
+  // Mini-modal: mantener acciones sincronizadas con el estado
+  syncPersonaActionsUI();
 }
 // Categoría activa de la persona (CS = Crupier/Supervisor, S = solo Supervisor)
 let CATEGORIA_ACTUAL = "CS";
@@ -2073,16 +2076,20 @@ window._psBindCrearPersona = function _psBindCrearPersona() {
   // Bind setup (crear persona) una sola vez
   bindPersonaSetup();
 
+  // [DESACTIVADO] Bind directo de "+ Nueva persona" (reemplazado por bindPersonaActions)
   // Botón "+ Nueva persona" -> SIEMPRE entra a SETUP_PERSONA
-  const btnNueva = document.getElementById("btnNuevaPersona");
-  if (btnNueva) {
-    btnNueva.onclick = () => {
-      bindPersonaSetup();
-      setAppState(APP_STATES.SETUP_PERSONA);
-      renderByAppState();
-      setTimeout(() => _psEl("psNombre")?.focus(), 0);
-    };
-  }
+  // const btnNueva = document.getElementById("btnNuevaPersona");
+  // if (btnNueva) {
+  //   btnNueva.onclick = () => {
+  //     bindPersonaSetup();
+  //     setAppState(APP_STATES.SETUP_PERSONA);
+  //     renderByAppState();
+  //     setTimeout(() => _psEl("psNombre")?.focus(), 0);
+  //   };
+  // }
+
+  // ✅ Binder único del bloque de acciones (delegación)
+  bindPersonaActions();
 
   // Estado inicial + render inicial
   setAppState(decideInitialState());
@@ -2176,6 +2183,26 @@ function personaActionsNuevaPersona() {
     if (input) input.focus();
   }, 0);
 }
+
+/**
+ * Mini-modal: decide visibilidad/habilitación del botón borrar
+ * en base al estado actual.
+ */
+function syncPersonaActionsUI() {
+  const btnBorrar = document.getElementById("btnBorrarPersona");
+  if (!btnBorrar) return;
+
+  const ids = Object.keys(personas || {});
+  const hayPersonas = ids.length > 0;
+  const activaValida = !!(personaActivaId && personas && personas[personaActivaId]);
+
+  // Visible solo si hay al menos 1 persona
+  btnBorrar.hidden = !hayPersonas;
+
+  // Habilitado solo si hay persona activa válida
+  btnBorrar.disabled = !activaValida;
+}
+
 
 
 
