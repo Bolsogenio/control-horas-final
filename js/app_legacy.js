@@ -541,6 +541,46 @@ function getJornadaByFecha(fechaIso) {
   return jornadasByFecha.get(key);
 }
 
+function borrarPersonaActiva() {
+  if (!personaActivaId || !personas || !personas[personaActivaId]) return false;
+
+  const nombre = personas[personaActivaId]?.nombre || personaActivaId;
+  const ok = window.confirm(`¿Borrar "${nombre}"? Esta acción no se puede deshacer.`);
+  if (!ok) return false;
+
+  const idBorrada = personaActivaId;
+
+  // 1) borrar del objeto
+  delete personas[idBorrada];
+
+  // 2) elegir nueva activa (primera disponible) o null
+  const ids = Object.keys(personas || {});
+  personaActivaId = ids[0] || null;
+
+  // 3) sincronizar jornadas (alias global que usa toda la app)
+  if (personaActivaId && personas[personaActivaId]) {
+    jornadas = Array.isArray(personas[personaActivaId].jornadas)
+      ? personas[personaActivaId].jornadas
+      : [];
+  } else {
+    jornadas = [];
+  }
+
+  // 4) reconstruir índice
+  rebuildJornadasIndex();
+
+  // 5) persistir
+  guardarPersonas();
+
+  // 6) estado UI + render único
+  setAppState(decideInitialState());
+  renderByAppState();
+
+  return true;
+}
+
+
+
 function findIndexJornadaPorFecha(fechaIso) {
   const key = dn_normalizarFecha(fechaIso);
   if (!key) return -1;
@@ -2069,6 +2109,9 @@ function renderSelectorPersonas() {
 }
 
 let _personaSelectBound = false;
+
+
+
 function bindSelectorPersonas() {
   if (_personaSelectBound) return;
   _personaSelectBound = true;
@@ -2081,6 +2124,57 @@ function bindSelectorPersonas() {
       renderSelectorPersonas(); // re-sincroniza selección
     },
   });
+}
+
+
+// ===================================================
+// MINI-MODAL / TOOLBAR - ACCIONES DE PERSONA
+// ===================================================
+
+let _personaActionsBound = false;
+
+/**
+ * Binder único del bloque #personaActions
+ * - Event delegation
+ * - Idempotente
+ * - Sin lógica de negocio
+ */
+function bindPersonaActions() {
+  if (_personaActionsBound) return;
+  _personaActionsBound = true;
+
+  const container = document.getElementById("personaActions");
+  if (!container) return;
+
+  container.addEventListener("click", (ev) => {
+    const btn = ev.target.closest("button");
+    if (!btn) return;
+
+    if (btn.id === "btnBorrarPersona") {
+      borrarPersonaActiva();
+      return;
+    }
+
+    if (btn.id === "btnNuevaPersona") {
+      personaActionsNuevaPersona();
+      return;
+    }
+  });
+}
+
+/**
+ * Flujo existente de "+ Nueva persona"
+ * (extraído para que el binder no tenga lógica)
+ */
+function personaActionsNuevaPersona() {
+  bindPersonaSetup();
+  setAppState(APP_STATES.SETUP_PERSONA);
+  renderByAppState();
+
+  setTimeout(() => {
+    const input = document.getElementById("psNombre");
+    if (input) input.focus();
+  }, 0);
 }
 
 
