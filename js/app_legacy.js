@@ -550,27 +550,28 @@ function borrarPersonaActiva() {
 
   const idBorrada = personaActivaId;
 
-  // 1) borrar del objeto
+  // 1) borrar del objeto en memoria
   delete personas[idBorrada];
 
   // 2) elegir nueva activa (primera disponible) o null
   const ids = Object.keys(personas || {});
   personaActivaId = ids[0] || null;
 
-  // 3) sincronizar jornadas (alias global que usa toda la app)
+  // 3) re-activar (perfil + categoría + alias jornadas) o limpiar todo si quedó vacío
   if (personaActivaId && personas[personaActivaId]) {
-    jornadas = Array.isArray(personas[personaActivaId].jornadas)
-      ? personas[personaActivaId].jornadas
-      : [];
+    activarPersona(personaActivaId, { render: false, persistir: false });
   } else {
+    PERFIL_ACTUAL = null;
+    CATEGORIA_ACTUAL = "CS";
     jornadas = [];
+    jornadasByFecha = new Map();
   }
 
-  // 4) reconstruir índice
+  // 4) reconstruir índice (por seguridad)
   rebuildJornadasIndex();
 
-  // 5) persistir
-  guardarPersonas();
+  // 5) persistir (overwrite para que NO reaparezca la persona borrada)
+  guardarPersonas({ overwrite: true });
 
   // 6) estado UI + render único
   setAppState(decideInitialState());
@@ -578,6 +579,7 @@ function borrarPersonaActiva() {
 
   return true;
 }
+
 
 
 
@@ -698,6 +700,9 @@ function renderByAppState() {
   const sel = document.getElementById("personaSelect");
   if (sel) sel.disabled = (appState !== APP_STATES.READY);
 
+  // Mini-modal: mantener acciones sincronizadas con el estado
+  syncPersonaActionsUI();
+
   if (appState === APP_STATES.READY) {
     psMostrarSetup(false);
     renderSelectorPersonas();
@@ -713,9 +718,6 @@ function renderByAppState() {
 
   // En NO_PERSONAS, dejamos el selector vacío (si existe) y sin interacción.
   if (sel) sel.innerHTML = "";
-
-  // Mini-modal: mantener acciones sincronizadas con el estado
-  syncPersonaActionsUI();
 }
 // Categoría activa de la persona (CS = Crupier/Supervisor, S = solo Supervisor)
 let CATEGORIA_ACTUAL = "CS";
@@ -810,22 +812,26 @@ function cargarPersonas() {
 
 
 
-function guardarPersonas() {
+function guardarPersonas(opts = {}) {
+  const { overwrite = false } = (opts && typeof opts === "object") ? opts : {};
   try {
-    // 1) Traer lo que ya hay guardado para NO perder nada
-    const stored = personasRepo.loadState() || null;
+    // Si overwrite=true, guardamos EXACTAMENTE lo que hay en memoria.
+    // Esto es clave para operaciones destructivas (ej: borrar persona),
+    // porque un merge con storage reintroduce claves borradas.
+    const stored = overwrite ? null : (personasRepo.loadState() || null);
     const storedPersonas =
       stored && stored.personas && typeof stored.personas === "object"
         ? stored.personas
         : {};
 
-    // 2) Merge: storage + memoria (memoria gana)
-    const mergedPersonas = {
-      ...storedPersonas,
-      ...(personas && typeof personas === "object" ? personas : {}),
-    };
+    const mergedPersonas = overwrite
+      ? { ...(personas && typeof personas === "object" ? personas : {}) }
+      : {
+          ...storedPersonas,
+          ...(personas && typeof personas === "object" ? personas : {}),
+        };
 
-    // 3) La persona activa siempre guarda SUS jornadas actuales
+    // La persona activa siempre guarda SUS jornadas actuales
     if (personaActivaId && mergedPersonas[personaActivaId]) {
       mergedPersonas[personaActivaId] = {
         ...mergedPersonas[personaActivaId],
@@ -833,7 +839,7 @@ function guardarPersonas() {
       };
     }
 
-    // 4) Persistir el state completo
+    // Persistir el state completo
     const newState = {
       personaActivaId: personaActivaId || stored?.personaActivaId || null,
       personas: mergedPersonas,
@@ -841,13 +847,14 @@ function guardarPersonas() {
 
     personasRepo.saveState(newState);
 
-    // 5) Mantener memoria alineada
+    // Mantener memoria alineada
     personas = mergedPersonas;
     personaActivaId = newState.personaActivaId;
   } catch (e) {
     console.error("Error guardando personas:", e);
   }
 }
+
 
 
 
