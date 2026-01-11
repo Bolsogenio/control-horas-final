@@ -541,10 +541,11 @@ function getJornadaByFecha(fechaIso) {
   return jornadasByFecha.get(key);
 }
 
-
-
 function borrarPersonaActiva() {
   if (!personaActivaId || !personas || !personas[personaActivaId]) return false;
+  const nombre = personas[personaActivaId]?.nombre || personaActivaId;
+  // Confirmación inline pendiente (por ahora: sin popup)
+  // console.warn(`[borrarPersonaActiva] borrando sin confirmación: ${nombre}`);
 
   const idBorrada = personaActivaId;
 
@@ -2013,11 +2014,12 @@ export function legacyInit() {
 let _psCrearBound = false;
 
 function bindPersonaSetup() {
+  const btn = document.getElementById("psCrearBtn");
+  // Si el DOM todavía no tiene el setup, no marcamos bound (porque después sí va a existir)
+  if (!btn) return;
+
   if (_psCrearBound) return;
   _psCrearBound = true;
-
-  const btn = document.getElementById("psCrearBtn");
-  if (!btn) return;
 
   const msgEl = document.getElementById("psMsg");
   const setMsg = (t) => { if (msgEl) msgEl.textContent = t || ""; };
@@ -2179,10 +2181,10 @@ function bindPersonaActions() {
  * (extraído para que el binder no tenga lógica)
  */
 function personaActionsNuevaPersona() {
-  bindPersonaSetup();
   setAppState(APP_STATES.SETUP_PERSONA);
   renderByAppState();
-
+  // Ahora que el DOM del setup existe, hacemos el bind del botón Crear
+  bindPersonaSetup();
   setTimeout(() => {
     const input = document.getElementById("psNombre");
     if (input) input.focus();
