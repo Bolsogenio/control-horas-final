@@ -370,3 +370,43 @@
     grid-template-columns: 1fr;
   }
 }
+/* ===============================
+   PERSONA ACTIONS - CONFIRM INLINE (2º RENGLÓN FIJO)
+   =============================== */
+
+#personaDeleteConfirmRow.pa-confirm{
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+
+  /* Reserva el alto para que el bloque no "salte" al aparecer */
+  min-height: 34px;
+
+  margin-top: 6px;
+}
+
+#personaDeleteConfirmRow .pa-confirm-text{
+  font-size: .9rem;
+  font-weight: 600;
+  opacity: .85;
+  /* Evita que empuje los botones a otra línea por una frase larga */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#personaDeleteConfirmRow .pa-confirm-buttons{
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+  /* Mantiene ambos botones en la misma línea */
+  flex-wrap: nowrap;
+}
+
+#personaDeleteConfirmRow.pa-confirm--off{
+  opacity: 0;
+  pointer-events: none;
+}

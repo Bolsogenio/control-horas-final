@@ -27,9 +27,22 @@
 
   <div class="persona-actions-buttons">
     <button id="btnNuevaPersona" type="button">+ Nueva persona</button>
+
     <button id="btnBorrarPersona" type="button" class="btn-danger" hidden>
       🗑 Borrar
     </button>
+  </div>
+
+  <!-- 2º renglón fijo: confirmación inline (NO cambia tamaño) -->
+  <div id="personaDeleteConfirmRow" class="pa-confirm pa-confirm--off" aria-live="polite">
+    <span id="personaDeleteConfirmText" class="pa-confirm-text"></span>
+
+    <div class="pa-confirm-buttons">
+      <button id="btnCancelarBorrarPersona" type="button">Cancelar</button>
+      <button id="btnConfirmarBorrarPersona" type="button" class="btn-danger">
+        Confirmar borrado
+      </button>
+    </div>
   </div>
 </div>
 

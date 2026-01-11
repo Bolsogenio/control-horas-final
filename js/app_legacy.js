@@ -2010,6 +2010,50 @@ export function legacyInit() {
 
 
 
+
+// Compat: si algo lo llama desde afuera, lo mantenemos.
+window._psBindCrearPersona = function _psBindCrearPersona() {
+  bindPersonaSetup();
+};
+
+
+
+  // =====================================
+
+  // ===== INIT PERSONAS/UI (un solo flujo) =====
+  cargarPersonas();
+  // cargarJornadas();  // DESACTIVADO: las jornadas viven dentro de cada persona (evita pisadas/intermitencia)
+  bindCalendarNav();
+
+  // Bind setup (crear persona) una sola vez
+  bindPersonaSetup();
+
+  // [DESACTIVADO] Bind directo de "+ Nueva persona" (reemplazado por bindPersonaActions)
+  // Botón "+ Nueva persona" -> SIEMPRE entra a SETUP_PERSONA
+  // const btnNueva = document.getElementById("btnNuevaPersona");
+  // if (btnNueva) {
+  //   btnNueva.onclick = () => {
+  //     bindPersonaSetup();
+  //     setAppState(APP_STATES.SETUP_PERSONA);
+  //     renderByAppState();
+  //     setTimeout(() => _psEl("psNombre")?.focus(), 0);
+  //   };
+  // }
+
+  // ✅ Binder único del bloque de acciones (delegación)
+  bindPersonaActions();
+
+  // Estado inicial + render inicial
+  setAppState(decideInitialState());
+  renderByAppState();
+
+  // Exponer para usarlo al abrir el modal
+  window._mj_aplicarUIporTipo = aplicarUIporTipo;
+}
+
+// ===================================================
+// SETUP PERSONA - BIND (movido fuera de legacyInit)
+// ===================================================
 // Bind del botón "Crear" del setup (idempotente)
 let _psCrearBound = false;
 
@@ -2066,45 +2110,6 @@ function bindPersonaSetup() {
 
 }
 
-// Compat: si algo lo llama desde afuera, lo mantenemos.
-window._psBindCrearPersona = function _psBindCrearPersona() {
-  bindPersonaSetup();
-};
-
-
-
-  // =====================================
-
-  // ===== INIT PERSONAS/UI (un solo flujo) =====
-  cargarPersonas();
-  // cargarJornadas();  // DESACTIVADO: las jornadas viven dentro de cada persona (evita pisadas/intermitencia)
-  bindCalendarNav();
-
-  // Bind setup (crear persona) una sola vez
-  bindPersonaSetup();
-
-  // [DESACTIVADO] Bind directo de "+ Nueva persona" (reemplazado por bindPersonaActions)
-  // Botón "+ Nueva persona" -> SIEMPRE entra a SETUP_PERSONA
-  // const btnNueva = document.getElementById("btnNuevaPersona");
-  // if (btnNueva) {
-  //   btnNueva.onclick = () => {
-  //     bindPersonaSetup();
-  //     setAppState(APP_STATES.SETUP_PERSONA);
-  //     renderByAppState();
-  //     setTimeout(() => _psEl("psNombre")?.focus(), 0);
-  //   };
-  // }
-
-  // ✅ Binder único del bloque de acciones (delegación)
-  bindPersonaActions();
-
-  // Estado inicial + render inicial
-  setAppState(decideInitialState());
-  renderByAppState();
-
-  // Exponer para usarlo al abrir el modal
-  window._mj_aplicarUIporTipo = aplicarUIporTipo;
-}
 
 // (Opcional) exponer para debug manual
 window.legacyInit = legacyInit;
@@ -2147,6 +2152,32 @@ function bindSelectorPersonas() {
 
 let _personaActionsBound = false;
 
+// Estado interno de confirmación (NO window/global)
+let _personaDeleteConfirmOpen = false;
+
+function _personaDeleteNombreActual() {
+  if (!personaActivaId || !personas || !personas[personaActivaId]) return "";
+  return String(personas[personaActivaId]?.nombre || personaActivaId).trim();
+}
+
+function _personaDeleteCanAskConfirm() {
+  const ids = Object.keys(personas || {});
+  const hayPersonas = ids.length > 0;
+  const activaValida = !!(personaActivaId && personas && personas[personaActivaId]);
+  return hayPersonas && activaValida;
+}
+
+function personaDeleteConfirmClose() {
+  _personaDeleteConfirmOpen = false;
+  syncPersonaActionsUI();
+}
+
+function personaDeleteConfirmOpen() {
+  if (!_personaDeleteCanAskConfirm()) return;
+  _personaDeleteConfirmOpen = true;
+  syncPersonaActionsUI();
+}
+
 /**
  * Binder único del bloque #personaActions
  * - Event delegation
@@ -2164,17 +2195,39 @@ function bindPersonaActions() {
     const btn = ev.target.closest("button");
     if (!btn) return;
 
-    if (btn.id === "btnBorrarPersona") {
+    // Cancelar confirmación
+    if (btn.id === "btnCancelarBorrarPersona") {
+      personaDeleteConfirmClose();
+      return;
+    }
+
+    // Confirmar borrado
+    if (btn.id === "btnConfirmarBorrarPersona") {
+      if (!_personaDeleteCanAskConfirm()) {
+        personaDeleteConfirmClose();
+        return;
+      }
+      // Cerrar primero: evita UI colgada si el render reacomoda todo
+      _personaDeleteConfirmOpen = false;
       borrarPersonaActiva();
       return;
     }
 
+    // Click en "Borrar" => abre confirmación inline
+    if (btn.id === "btnBorrarPersona") {
+      if (!_personaDeleteConfirmOpen) personaDeleteConfirmOpen();
+      return;
+    }
+
+    // "+ Nueva persona"
     if (btn.id === "btnNuevaPersona") {
+      if (_personaDeleteConfirmOpen) personaDeleteConfirmClose();
       personaActionsNuevaPersona();
       return;
     }
   });
 }
+
 
 /**
  * Flujo existente de "+ Nueva persona"
@@ -2197,18 +2250,55 @@ function personaActionsNuevaPersona() {
  */
 function syncPersonaActionsUI() {
   const btnBorrar = document.getElementById("btnBorrarPersona");
+  const btnNueva = document.getElementById("btnNuevaPersona");
+  const sel = document.getElementById("personaSelect");
+
+  const row = document.getElementById("personaDeleteConfirmRow");
+  const txt = document.getElementById("personaDeleteConfirmText");
+  const btnCancel = document.getElementById("btnCancelarBorrarPersona");
+  const btnConfirm = document.getElementById("btnConfirmarBorrarPersona");
+
+  // Si falta algo del DOM principal, no rompemos
   if (!btnBorrar) return;
 
   const ids = Object.keys(personas || {});
   const hayPersonas = ids.length > 0;
   const activaValida = !!(personaActivaId && personas && personas[personaActivaId]);
 
-  // Visible solo si hay al menos 1 persona
+  // Botón borrar: visible solo si hay personas
   btnBorrar.hidden = !hayPersonas;
+  btnBorrar.disabled = !(hayPersonas && activaValida);
 
-  // Habilitado solo si hay persona activa válida
-  btnBorrar.disabled = !activaValida;
+  // Si ya no se puede confirmar (por ejemplo borraste y quedó vacío), cerramos confirmación
+  if (_personaDeleteConfirmOpen && !(hayPersonas && activaValida)) {
+    _personaDeleteConfirmOpen = false;
+  }
+
+  // Confirm row: siempre ocupa lugar, solo cambia clase off/on
+  if (row) {
+    if (_personaDeleteConfirmOpen) row.classList.remove("pa-confirm--off");
+    else row.classList.add("pa-confirm--off");
+  }
+
+  if (txt) {
+  if (_personaDeleteConfirmOpen) {
+    txt.textContent = "¿Borrar ésta persona y sus jornadas?";
+  } else {
+    txt.textContent = "";
+  }
 }
+
+
+  // Bloquear controles durante confirmación (evita cambios de persona mientras confirmás)
+  const lock = _personaDeleteConfirmOpen;
+
+  if (btnConfirm) btnConfirm.disabled = !(lock && hayPersonas && activaValida);
+  if (btnCancel) btnCancel.disabled = !lock;
+
+  if (btnNueva) btnNueva.disabled = lock;
+  if (sel) sel.disabled = lock || (appState !== APP_STATES.READY);
+}
+
 
 
 
