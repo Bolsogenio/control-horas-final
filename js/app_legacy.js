@@ -480,6 +480,27 @@ let jornadas = [];
 // Índice en memoria (NO se persiste). Clave: "YYYY-MM-DD" (fecha ISO LOCAL normalizada)
 let jornadasByFecha = new Map();
 
+function warnIfDuplicateFechasInJornadas() {
+  if (!Array.isArray(jornadas) || jornadas.length === 0) return;
+
+  const seen = new Set();
+  const dupes = new Set();
+
+  for (const j of jornadas) {
+    const key = dn_normalizarFecha(j?.fecha);
+    if (!key) continue;
+
+    if (seen.has(key)) dupes.add(key);
+    else seen.add(key);
+  }
+
+  if (dupes.size > 0) {
+    console.warn(
+      "[SANITY] Duplicados por fecha detectados en jornadas[]:",
+      Array.from(dupes).sort()
+    );
+  }
+}
 
 
 function rebuildJornadasIndex() {
@@ -1226,8 +1247,10 @@ function changeMonth(delta) {
 
 
 
-
 function renderCalendar() {
+  // Sanity: si por alguna razón vuelve a haber duplicados, lo vemos al instante.
+  warnIfDuplicateFechasInJornadas();
+
   renderCalendarHeader();
   renderCalendarGrid();
   renderResumen();
