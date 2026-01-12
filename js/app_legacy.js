@@ -908,7 +908,6 @@ function perfilDesdePersona(p) {
 }
 
 
-
 function activarPersona(personaId, opts = {}) {
   const {
     render = true,
@@ -920,12 +919,19 @@ function activarPersona(personaId, opts = {}) {
     return;
   }
 
+  const p = personas[personaId];
+
+  // 0) Persona activa
   personaActivaId = personaId;
 
+  // ✅ 0.1) Perfil y categoría SIEMPRE desde la persona activa
+  PERFIL_ACTUAL = perfilDesdePersona(p);
+
+  const catRaw = String(p?.categoria || "CS").trim().toUpperCase();
+  CATEGORIA_ACTUAL = (catRaw === "S") ? "S" : "CS";
+
   // 1) Jornadas SIEMPRE desde la persona activa
-  jornadas = Array.isArray(personas[personaId].jornadas)
-    ? personas[personaId].jornadas
-    : [];
+  jornadas = Array.isArray(p.jornadas) ? p.jornadas : [];
 
   // 2) Reconstruir índice SIEMPRE (fuente única de verdad)
   rebuildJornadasIndex();
@@ -940,7 +946,6 @@ function activarPersona(personaId, opts = {}) {
     renderByAppState();
   }
 }
-
 
 
 
@@ -970,7 +975,8 @@ function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar
   const id = _nuevoIdPersona();
 
   const nombreOk = (String(nombre || "").trim() || `Persona ${id}`).trim();
-  const cat = (categoria === "S") ? "S" : "CS";
+  const catNorm = String(categoria || "").trim().toUpperCase();
+  const cat = (catNorm === "S") ? "S" : "CS";
 
   const h = _clampNumero(horasPorDia, 0.5, 9, 8);
   // redondeo a múltiplos de 0.5
