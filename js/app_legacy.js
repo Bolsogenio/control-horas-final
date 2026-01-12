@@ -480,6 +480,8 @@ let jornadas = [];
 // Índice en memoria (NO se persiste). Clave: "YYYY-MM-DD" (fecha ISO LOCAL normalizada)
 let jornadasByFecha = new Map();
 
+
+
 function rebuildJornadasIndex() {
   // 1) Normaliza fechas + elimina duplicados por fecha (se queda con la última)
   if (!Array.isArray(jornadas)) {
@@ -519,14 +521,36 @@ function rebuildJornadasIndex() {
   }
 }
 
+function ensureJornadasIndexFresh() {
+  // Si no hay array, nada que indexar
+  if (!Array.isArray(jornadas) || jornadas.length === 0) {
+    jornadasByFecha = new Map();
+    return;
+  }
+
+  // Si el map no existe o no es Map => reconstruir
+  if (!jornadasByFecha || !(jornadasByFecha instanceof Map)) {
+    rebuildJornadasIndex();
+    return;
+  }
+
+  // Si el tamaño no coincide => hay riesgo de des-sync
+  // (splices/pushes fuera del flujo, map incompleto, etc.)
+  if (jornadasByFecha.size !== jornadas.length) {
+    rebuildJornadasIndex();
+    return;
+  }
+}
+
+
 function getJornadaByFecha(fechaIso) {
   const key = dn_normalizarFecha(fechaIso);
   if (!key) return undefined;
-  if (!jornadasByFecha || !(jornadasByFecha instanceof Map) || jornadasByFecha.size === 0) {
-    rebuildJornadasIndex();
-  }
+
+  ensureJornadasIndexFresh();
   return jornadasByFecha.get(key);
 }
+
 
 function borrarPersonaActiva() {
   if (!personaActivaId || !personas || !personas[personaActivaId]) return false;
@@ -579,7 +603,7 @@ function findIndexJornadaPorFecha(fechaIso) {
 function ensurePlaceholderJornada(fechaIso) {
   const key = dn_normalizarFecha(fechaIso);
   if (!key) return -1;
-
+  ensureJornadasIndexFresh();
   // Asegurar índice listo
   if (!jornadasByFecha || !(jornadasByFecha instanceof Map)) {
     jornadasByFecha = new Map();
@@ -813,9 +837,9 @@ function guardarPersonas(opts = {}) {
     const mergedPersonas = overwrite
       ? { ...(personas && typeof personas === "object" ? personas : {}) }
       : {
-          ...storedPersonas,
-          ...(personas && typeof personas === "object" ? personas : {}),
-        };
+        ...storedPersonas,
+        ...(personas && typeof personas === "object" ? personas : {}),
+      };
 
     // La persona activa siempre guarda SUS jornadas actuales
     if (personaActivaId && mergedPersonas[personaActivaId]) {
@@ -1998,10 +2022,10 @@ export function legacyInit() {
 
 
 
-// Compat: si algo lo llama desde afuera, lo mantenemos.
-window._psBindCrearPersona = function _psBindCrearPersona() {
-  bindPersonaSetup();
-};
+  // Compat: si algo lo llama desde afuera, lo mantenemos.
+  window._psBindCrearPersona = function _psBindCrearPersona() {
+    bindPersonaSetup();
+  };
 
 
 
@@ -2268,12 +2292,12 @@ function syncPersonaActionsUI() {
   }
 
   if (txt) {
-  if (_personaDeleteConfirmOpen) {
-    txt.textContent = "¿Borrar ésta persona y sus jornadas?";
-  } else {
-    txt.textContent = "";
+    if (_personaDeleteConfirmOpen) {
+      txt.textContent = "¿Borrar ésta persona y sus jornadas?";
+    } else {
+      txt.textContent = "";
+    }
   }
-}
 
 
   // Bloquear controles durante confirmación (evita cambios de persona mientras confirmás)
