@@ -600,27 +600,22 @@ function findIndexJornadaPorFecha(fechaIso) {
   return jornadas.findIndex((j) => dn_normalizarFecha(j?.fecha) === key);
 }
 
+
 function ensurePlaceholderJornada(fechaIso) {
   const key = dn_normalizarFecha(fechaIso);
   if (!key) return -1;
-  ensureJornadasIndexFresh();
-  // Asegurar índice listo
-  if (!jornadasByFecha || !(jornadasByFecha instanceof Map)) {
-    jornadasByFecha = new Map();
-  }
-  if (jornadasByFecha.size === 0 && Array.isArray(jornadas) && jornadas.length) {
-    rebuildJornadasIndex();
-  }
 
-  // Ya existe
+  // ✅ Garantía fuerte: el índice está alineado con el array
+  ensureJornadasIndexFresh();
+
+  // Ya existe (por map)
   if (jornadasByFecha.has(key)) {
-    const idx = findIndexJornadaPorFecha(key);
-    return idx;
+    return findIndexJornadaPorFecha(key);
   }
 
   // Crear placeholder vacío
   const nueva = {
-    fecha: key, // ✅ ISO en storage (LOCAL normalizado)
+    fecha: key,
     crupier: 0,
     supervisor: 0,
     falta: false,
@@ -637,6 +632,7 @@ function ensurePlaceholderJornada(fechaIso) {
 
   return jornadas.length - 1;
 }
+
 
 function removeJornadaAtIndex(idx) {
   if (idx === null || idx === undefined) return;
