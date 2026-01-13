@@ -480,29 +480,6 @@ let jornadas = [];
 // Índice en memoria (NO se persiste). Clave: "YYYY-MM-DD" (fecha ISO LOCAL normalizada)
 let jornadasByFecha = new Map();
 
-function warnIfDuplicateFechasInJornadas() {
-  if (!Array.isArray(jornadas) || jornadas.length === 0) return;
-
-  const seen = new Set();
-  const dupes = new Set();
-
-  for (const j of jornadas) {
-    const key = dn_normalizarFecha(j?.fecha);
-    if (!key) continue;
-
-    if (seen.has(key)) dupes.add(key);
-    else seen.add(key);
-  }
-
-  if (dupes.size > 0) {
-    console.warn(
-      "[SANITY] Duplicados por fecha detectados en jornadas[]:",
-      Array.from(dupes).sort()
-    );
-  }
-}
-
-
 function rebuildJornadasIndex() {
   // 1) Normaliza fechas + elimina duplicados por fecha (se queda con la última)
   if (!Array.isArray(jornadas)) {
@@ -542,36 +519,14 @@ function rebuildJornadasIndex() {
   }
 }
 
-function ensureJornadasIndexFresh() {
-  // Si no hay array, nada que indexar
-  if (!Array.isArray(jornadas) || jornadas.length === 0) {
-    jornadasByFecha = new Map();
-    return;
-  }
-
-  // Si el map no existe o no es Map => reconstruir
-  if (!jornadasByFecha || !(jornadasByFecha instanceof Map)) {
-    rebuildJornadasIndex();
-    return;
-  }
-
-  // Si el tamaño no coincide => hay riesgo de des-sync
-  // (splices/pushes fuera del flujo, map incompleto, etc.)
-  if (jornadasByFecha.size !== jornadas.length) {
-    rebuildJornadasIndex();
-    return;
-  }
-}
-
-
 function getJornadaByFecha(fechaIso) {
   const key = dn_normalizarFecha(fechaIso);
   if (!key) return undefined;
-
-  ensureJornadasIndexFresh();
+  if (!jornadasByFecha || !(jornadasByFecha instanceof Map) || jornadasByFecha.size === 0) {
+    rebuildJornadasIndex();
+  }
   return jornadasByFecha.get(key);
 }
-
 
 function borrarPersonaActiva() {
   if (!personaActivaId || !personas || !personas[personaActivaId]) return false;
@@ -621,22 +576,27 @@ function findIndexJornadaPorFecha(fechaIso) {
   return jornadas.findIndex((j) => dn_normalizarFecha(j?.fecha) === key);
 }
 
-
 function ensurePlaceholderJornada(fechaIso) {
   const key = dn_normalizarFecha(fechaIso);
   if (!key) return -1;
 
-  // ✅ Garantía fuerte: el índice está alineado con el array
-  ensureJornadasIndexFresh();
+  // Asegurar índice listo
+  if (!jornadasByFecha || !(jornadasByFecha instanceof Map)) {
+    jornadasByFecha = new Map();
+  }
+  if (jornadasByFecha.size === 0 && Array.isArray(jornadas) && jornadas.length) {
+    rebuildJornadasIndex();
+  }
 
-  // Ya existe (por map)
+  // Ya existe
   if (jornadasByFecha.has(key)) {
-    return findIndexJornadaPorFecha(key);
+    const idx = findIndexJornadaPorFecha(key);
+    return idx;
   }
 
   // Crear placeholder vacío
   const nueva = {
-    fecha: key,
+    fecha: key, // ✅ ISO en storage (LOCAL normalizado)
     crupier: 0,
     supervisor: 0,
     falta: false,
@@ -653,7 +613,6 @@ function ensurePlaceholderJornada(fechaIso) {
 
   return jornadas.length - 1;
 }
-
 
 function removeJornadaAtIndex(idx) {
   if (idx === null || idx === undefined) return;
@@ -854,9 +813,9 @@ function guardarPersonas(opts = {}) {
     const mergedPersonas = overwrite
       ? { ...(personas && typeof personas === "object" ? personas : {}) }
       : {
-        ...storedPersonas,
-        ...(personas && typeof personas === "object" ? personas : {}),
-      };
+          ...storedPersonas,
+          ...(personas && typeof personas === "object" ? personas : {}),
+        };
 
     // La persona activa siempre guarda SUS jornadas actuales
     if (personaActivaId && mergedPersonas[personaActivaId]) {
@@ -908,6 +867,7 @@ function perfilDesdePersona(p) {
 }
 
 
+
 function activarPersona(personaId, opts = {}) {
   const {
     render = true,
@@ -919,19 +879,12 @@ function activarPersona(personaId, opts = {}) {
     return;
   }
 
-  const p = personas[personaId];
-
-  // 0) Persona activa
   personaActivaId = personaId;
 
-  // ✅ 0.1) Perfil y categoría SIEMPRE desde la persona activa
-  PERFIL_ACTUAL = perfilDesdePersona(p);
-
-  const catRaw = String(p?.categoria || "CS").trim().toUpperCase();
-  CATEGORIA_ACTUAL = (catRaw === "S") ? "S" : "CS";
-
   // 1) Jornadas SIEMPRE desde la persona activa
-  jornadas = Array.isArray(p.jornadas) ? p.jornadas : [];
+  jornadas = Array.isArray(personas[personaId].jornadas)
+    ? personas[personaId].jornadas
+    : [];
 
   // 2) Reconstruir índice SIEMPRE (fuente única de verdad)
   rebuildJornadasIndex();
@@ -946,6 +899,7 @@ function activarPersona(personaId, opts = {}) {
     renderByAppState();
   }
 }
+
 
 
 
@@ -975,8 +929,7 @@ function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar
   const id = _nuevoIdPersona();
 
   const nombreOk = (String(nombre || "").trim() || `Persona ${id}`).trim();
-  const catNorm = String(categoria || "").trim().toUpperCase();
-  const cat = (catNorm === "S") ? "S" : "CS";
+  const cat = (categoria === "S") ? "S" : "CS";
 
   const h = _clampNumero(horasPorDia, 0.5, 9, 8);
   // redondeo a múltiplos de 0.5
@@ -1253,10 +1206,8 @@ function changeMonth(delta) {
 
 
 
-function renderCalendar() {
-  // Sanity: si por alguna razón vuelve a haber duplicados, lo vemos al instante.
-  warnIfDuplicateFechasInJornadas();
 
+function renderCalendar() {
   renderCalendarHeader();
   renderCalendarGrid();
   renderResumen();
@@ -1769,7 +1720,7 @@ export function legacyInit() {
       if (btnOk) btnOk.textContent = "Continuar";
       setTimeout(() => {
         const sup = _mjEl("mjSupervisor");
-        if (sup) { sup.focus(); sup.select(); }
+        if (sup && !sup.disabled) { sup.focus(); sup.select(); }
       }, 0);
 
     }
@@ -1816,9 +1767,11 @@ export function legacyInit() {
     }
 
     if (ES_SOLO_SUP()) {
-      if (lblCr) lblCr.hidden = true;
-      if (lblSup) lblSup.hidden = false;
-      setPaso("sup");
+      // Supervisor permanente: primero se ingresa DESCUENTO (mjCrupier),
+      // y luego se muestra Supervisor (auto) en el paso 2.
+      if (lblCr) lblCr.hidden = false;
+      if (lblSup) lblSup.hidden = true;
+      setPaso("cr");
     } else {
       if (lblCr) lblCr.hidden = false;
       if (lblSup) lblSup.hidden = true;
@@ -1911,22 +1864,21 @@ export function legacyInit() {
 
       _mjTempCr = crVal;
 
-      // ✅ AVISO PREVIO AL PASO SUPERVISOR
-      // (usa el cálculo interno: 8 - cr)
-      if ((tipo === "normal" || tipo === "libreTrabajado") && crVal < MAX_HORAS_DIA()) {
-        const faltan = MAX_HORAS_DIA() - crVal;
+      // Paso 2: Supervisor
+      // - CS: el usuario puede ingresar horas de Supervisor (si no hizo, 0)
+      // - S: Supervisor se calcula automáticamente como (maxDia - descuento)
+      const supInp = _mjEl("mjSupervisor");
 
-        const fmt = (n) => {
-          const s = Number(n).toFixed(1);
-          return s.endsWith(".0") ? s.slice(0, -2) : s;
-        };
-
-        _mjMostrarMsg(
-          `Aviso: Si ingresas menos de ${fmt(faltan)} hs de Supervisor,` +
-          `el día quedará con descuento.`
-        );
+      if (ES_SOLO_SUP()) {
+        const supAuto = Math.max(0, MAX_HORAS_DIA() - crVal);
+        if (supInp) {
+          supInp.value = String(supAuto);
+          supInp.disabled = true; // visible pero no editable
+        }
+        _mjMostrarMsg("Supervisor calculado automáticamente.");
       } else {
-        _mjMostrarMsg("");
+        if (supInp) supInp.disabled = false;
+        _mjMostrarMsg("Si no hizo hs de Supervisor ingrese cero.");
       }
 
       setPaso("sup");
@@ -2047,10 +1999,10 @@ export function legacyInit() {
 
 
 
-  // Compat: si algo lo llama desde afuera, lo mantenemos.
-  window._psBindCrearPersona = function _psBindCrearPersona() {
-    bindPersonaSetup();
-  };
+// Compat: si algo lo llama desde afuera, lo mantenemos.
+window._psBindCrearPersona = function _psBindCrearPersona() {
+  bindPersonaSetup();
+};
 
 
 
@@ -2317,12 +2269,12 @@ function syncPersonaActionsUI() {
   }
 
   if (txt) {
-    if (_personaDeleteConfirmOpen) {
-      txt.textContent = "¿Borrar ésta persona y sus jornadas?";
-    } else {
-      txt.textContent = "";
-    }
+  if (_personaDeleteConfirmOpen) {
+    txt.textContent = "¿Borrar ésta persona y sus jornadas?";
+  } else {
+    txt.textContent = "";
   }
+}
 
 
   // Bloquear controles durante confirmación (evita cambios de persona mientras confirmás)
