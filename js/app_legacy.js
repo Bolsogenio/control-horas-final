@@ -1459,7 +1459,7 @@ const aplicarUIporTipo = () => {
     _mjTipoPrev &&
     _mjTipoPrev !== tipo
   ) {
-    cr.value = String(MAX_HORAS_DIA());
+    cr.value = "0";
     sup.value = "0";
     setTimeout(() => {
       cr.focus();
@@ -1720,7 +1720,7 @@ export function legacyInit() {
       if (btnOk) btnOk.textContent = "Continuar";
       setTimeout(() => {
         const sup = _mjEl("mjSupervisor");
-        if (sup && !sup.disabled) { sup.focus(); sup.select(); }
+        if (sup) { sup.focus(); sup.select(); }
       }, 0);
 
     }
@@ -1767,11 +1767,9 @@ export function legacyInit() {
     }
 
     if (ES_SOLO_SUP()) {
-      // Supervisor permanente: primero se ingresa DESCUENTO (mjCrupier),
-      // y luego se muestra Supervisor (auto) en el paso 2.
-      if (lblCr) lblCr.hidden = false;
-      if (lblSup) lblSup.hidden = true;
-      setPaso("cr");
+      if (lblCr) lblCr.hidden = true;
+      if (lblSup) lblSup.hidden = false;
+      setPaso("sup");
     } else {
       if (lblCr) lblCr.hidden = false;
       if (lblSup) lblSup.hidden = true;
@@ -1864,24 +1862,29 @@ export function legacyInit() {
 
       _mjTempCr = crVal;
 
-      // Paso 2: Supervisor
-      // - CS: el usuario puede ingresar horas de Supervisor (si no hizo, 0)
-      // - S: Supervisor se calcula automáticamente como (maxDia - descuento)
-      const supInp = _mjEl("mjSupervisor");
+      // ✅ AVISO PREVIO AL PASO SUPERVISOR
+      // Ahora el primer input es DESCUENTO (hs no trabajadas).
+      // Validación: Supervisor + Descuento <= MAX_HORAS_DIA()
+      if ((tipo === "normal" || tipo === "libreTrabajado")) {
+        const max = MAX_HORAS_DIA();
+        const desc = crVal; // (input mjCrupier == descuento)
+        const fmt = (n) => {
+          const s = Number(n).toFixed(1);
+          return s.endsWith(".0") ? s.slice(0, -2) : s;
+        };
 
-      if (ES_SOLO_SUP()) {
-        const supAuto = Math.max(0, MAX_HORAS_DIA() - crVal);
-        if (supInp) {
-          supInp.value = String(supAuto);
-          supInp.disabled = true; // visible pero no editable
+        if (desc > 0) {
+          const supMax = Math.max(0, max - desc);
+          _mjMostrarMsg(
+            `Aviso: Con descuento ${fmt(desc)} hs, el máximo de Supervisor para este día es ${fmt(supMax)} hs.`
+          );
+        } else {
+          _mjMostrarMsg("");
         }
-        _mjMostrarMsg("Supervisor calculado automáticamente.");
       } else {
-        if (supInp) supInp.disabled = false;
-        _mjMostrarMsg("Si no hizo hs de Supervisor ingrese cero.");
+        _mjMostrarMsg("");
       }
-
-      setPaso("sup");
+setPaso("sup");
       return;
     }
 
@@ -1894,17 +1897,18 @@ export function legacyInit() {
     const v2 = dn_validarHoras(_mjTempCr, supVal, MAX_HORAS_DIA());
     if (!v2.ok) return _mjMostrarMsg(v2.msg);
 
-    // Normal / Libre trabajado no pueden quedar en 0 / 0
-    if (
-      (tipo === "normal" || tipo === "libreTrabajado") &&
-      (_mjTempCr + supVal) === 0
-    ) {
+    // Normal / Libre trabajado: no puede ser "no trabajó" (descuento completo)
+  // Con el nuevo modelo: DESCUENTO (input 1) + SUP (input 2) == MAX_HORAS_DIA() implica 0 hs trabajadas.
+  if ((tipo === "normal" || tipo === "libreTrabajado")) {
+    const max = MAX_HORAS_DIA();
+    const desc = _mjTempCr;
+    if ((desc + supVal) >= max && supVal === 0) {
       return _mjMostrarMsg(
-        `Ingresá horas entre 0.5 y ${MAX_HORAS_DIA()}. Si no trabajaste, cambiá el tipo de día.`
+        `Con descuento ${max} hs no queda trabajo registrado. Si no trabajaste, cambiá el tipo de día.`
       );
     }
-
-    // ===============================
+  }
+// ===============================
     // Regla DÍA VACÍO (normal 8/0)
     // ===============================
     const defCS = DIA_DEFAULT();
