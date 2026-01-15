@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
@@ -29,11 +29,11 @@
     <button id="btnNuevaPersona" type="button">+ Nueva persona</button>
 
     <button id="btnBorrarPersona" type="button" class="btn-danger" hidden>
-      ðŸ—‘ Borrar
+      🗑 Borrar
     </button>
   </div>
 
-  <!-- 2Âº renglÃ³n fijo: confirmaciÃ³n inline (NO cambia tamaÃ±o) -->
+  <!-- 2º renglón fijo: confirmación inline (NO cambia tamaño) -->
   <div id="personaDeleteConfirmRow" class="pa-confirm pa-confirm--off" aria-live="polite">
     <span id="personaDeleteConfirmText" class="pa-confirm-text"></span>
 
@@ -49,12 +49,12 @@
   <h1>Control de Horas</h1>
 
   <div class="card">
-    <p><strong>Hoy:</strong> <span id="todayText">â€”</span></p>
+    <p><strong>Hoy:</strong> <span id="todayText">—</span></p>
   </div>
 
   <hr>
 
-  <!-- LISTA INTERNA (queda, pero luego se ocultarÃ¡ o eliminarÃ¡) -->
+  <!-- LISTA INTERNA (queda, pero luego se ocultará o eliminará) -->
   <div id="listaJornadas" hidden>
     <h2>Jornadas registradas</h2>
     <ul id="daysList"></ul>
@@ -68,7 +68,7 @@
   <div id="personaSetup" class="setup-card" hidden>
     <h3>Crear primera persona</h3>
     <p class="setup-sub">
-      Necesitamos tu perfil para aplicar las reglas del calendario (horas/dÃ­a, libres por quincena y categorÃ­a).
+      Necesitamos tu perfil para aplicar las reglas del calendario (horas/día, libres por quincena y categoría).
     </p>
 
     <div class="setup-grid">
@@ -78,7 +78,7 @@
       </label>
 
       <label class="setup-field">
-        <span>CategorÃ­a</span>
+        <span>Categoría</span>
         <select id="psCategoria">
           <option value="cs">Crupier / Supervisor (dual)</option>
           <option value="s">Solo Supervisor</option>
@@ -86,7 +86,7 @@
       </label>
 
       <label class="setup-field">
-        <span>Horas por dÃ­a</span>
+        <span>Horas por día</span>
         <input id="psHoras" type="number" min="0.5" max="9" step="0.5" value="8" />
       </label>
 
@@ -106,9 +106,9 @@
   </div>
 
   <div class="cal-header">
-    <button id="prevMonthBtn" type="button">â—€</button>
-    <div id="monthLabel" class="cal-title">â€”</div>
-    <button id="nextMonthBtn" type="button">â–¶</button>
+    <button id="prevMonthBtn" type="button">◀</button>
+    <div id="monthLabel" class="cal-title">—</div>
+    <button id="nextMonthBtn" type="button">▶</button>
   </div>
 
   <div id="weekdays" class="cal-weekdays"></div>
@@ -119,20 +119,20 @@
   <h2>Resumen</h2>
 
   <div class="card">
-    <p><strong>Quincena:</strong> <span id="sumQuincenaRange">â€”</span></p>
-    <p id="sumQuincenaText">â€”</p>
+    <p><strong>Quincena:</strong> <span id="sumQuincenaRange">—</span></p>
+    <p id="sumQuincenaText">—</p>
   </div>
 
   <div class="card">
-    <p><strong>Mes:</strong> <span id="sumMonthLabel">â€”</span></p>
-    <p id="sumMonthText">â€”</p>
+    <p><strong>Mes:</strong> <span id="sumMonthLabel">—</span></p>
+    <p id="sumMonthText">—</p>
   </div>
 
   <!-- Modal Editor Jornada (HTML) -->
   <div id="modalJornada" class="mj-backdrop" hidden>
     <div class="mj-modal" role="dialog" aria-modal="true" aria-labelledby="mjTitle">
       <div class="mj-head">
-        <div id="mjInfo" class="mj-info">â€”</div>
+        <div id="mjInfo" class="mj-info">—</div>
         <div id="mjCambiando" class="mj-cambiando" hidden></div>
 
         <div class="mj-body">
@@ -151,7 +151,7 @@
             <div id="mjMsg" class="mj-msg" hidden></div>
           </div>
 
-          <!-- Derecha: tipo de dÃ­a (RADIO) -->
+          <!-- Derecha: tipo de día (RADIO) -->
           <div class="mj-col-right" id="mjTipos">
             <label class="mj-opt">
               <input type="radio" name="mjTipo" value="normal" checked />
@@ -209,4 +209,3 @@
 
 </body>
 </html>
-
