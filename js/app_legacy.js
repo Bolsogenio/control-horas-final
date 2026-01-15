@@ -1912,7 +1912,8 @@ setPaso("sup");
     // Regla DÍA VACÍO (normal 8/0)
     // ===============================
     const defCS = DIA_DEFAULT();
-    if (tipo === "normal" && _mjTempCr === defCS.cr && supVal === defCS.sup) {
+    // Día vacío: normal con horas default (ej: 8/0) => no guardamos registro
+    if (tipo === "normal" && j.crupier === defCS.cr && supVal === defCS.sup) {
       removeJornadaAtIndex(_mjIndexActual);
       guardarJornadas();
       cerrarModalJornada();
@@ -1922,8 +1923,16 @@ setPaso("sup");
 
     // ===============================
     // Guardar jornada
+    // Modelo REAL: BASE = CR + SUP + DESC
+    // - Input 1 (mjDesc) = DESC
+    // - Input 2 (mjSupervisor) = SUP
+    // - CR se deriva: CR = BASE - SUP - DESC
     // ===============================
-    j.crupier = _mjTempCr;
+    const max = MAX_HORAS_DIA();
+    const descVal = Number(_mjTempCr) || 0; // _mjTempCr guarda DESC en el flujo actual
+    const crCalc = Math.max(0, max - supVal - descVal);
+
+    j.crupier = crCalc;
     j.supervisor = supVal;
 
     guardarJornadas();
