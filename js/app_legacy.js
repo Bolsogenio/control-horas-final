@@ -1,11 +1,11 @@
-import { createRepositories } from "./infra/repository.js";
+﻿import { createRepositories } from "./infra/repository.js";
 import { domRefs } from "./ui/dom.js";
 import { renderPersonaSelect, renderAppState } from "./ui/views.js";
 import { bindPersonaSelect } from "./ui/controllers.js";
 
 let _uiRefs = null;
 function UI() {
-  // Se inicializa después de DOMContentLoaded (legacyInit se llama desde app.js)
+  // Se inicializa despuÃ©s de DOMContentLoaded (legacyInit se llama desde app.js)
   if (!_uiRefs) _uiRefs = domRefs();
   return _uiRefs;
 }
@@ -42,7 +42,7 @@ let calMonth = new Date().getMonth(); // 0..11
 
 let PERFIL_ACTUAL = null;
 
-const WEEKDAYS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
+const WEEKDAYS = ["Lun", "Mar", "MiÃ©", "Jue", "Vie", "SÃ¡b", "Dom"];
 
 
 
@@ -77,7 +77,7 @@ import {
 /**
  * Helper oficial para generar fecha YYYY-MM-DD en horario LOCAL.
  * No modifica comportamiento actual.
- * Se define para futura migración móvil / control de huso horario.
+ * Se define para futura migraciÃ³n mÃ³vil / control de huso horario.
  */
 function getLocalISODate(d = new Date()) {
   const y = d.getFullYear();
@@ -88,7 +88,7 @@ function getLocalISODate(d = new Date()) {
 
 
 // ==========================
-// CONFIGURACIÓN
+// CONFIGURACIÃ“N
 // ==========================
 
 
@@ -96,10 +96,10 @@ function getLocalISODate(d = new Date()) {
 // PERFIL (reglas base del sistema)
 // ==========================
 // Importante: por ahora dejamos FULL TIME como perfil activo.
-// Este PASO 1 no cambia comportamiento, solo centraliza números.
+// Este PASO 1 no cambia comportamiento, solo centraliza nÃºmeros.
 const PERFIL_FULL_TIME = {
   id: "full_time",
-  nombre: "Full time (8h/día, 3 libres/quincena, 88h/quincena)",
+  nombre: "Full time (8h/dÃ­a, 3 libres/quincena, 88h/quincena)",
   maxHorasDia: 8,
   maxLibresQuincena: 3,
   horasQuincena: 88,
@@ -120,7 +120,7 @@ const PERFIL_6H_2LIBRES = {
 const PERFIL_PRESETS = {
   full_time: {
     id: "full_time",
-    nombre: "Full time (8h/día, 3 libres/quincena)",
+    nombre: "Full time (8h/dÃ­a, 3 libres/quincena)",
     horasPorDia: 8,
     libresPorQuincena: 3,
     topeQuincena: 88, // fijo por ahora
@@ -129,7 +129,7 @@ const PERFIL_PRESETS = {
     id: "6h_2libres",
     nombre: "6 hs / 2 libres",
     horasPorDia: 6,
-    libresPorQuincena: 4, // (según tu PERFIL_6H_2LIBRES actual)
+    libresPorQuincena: 4, // (segÃºn tu PERFIL_6H_2LIBRES actual)
     topeQuincena: 88, // fijo por ahora
   },
 };
@@ -147,7 +147,7 @@ function aplicarPresetPerfilPersonaActiva(presetId) {
 
   const preset = PERFIL_PRESETS[presetId];
   if (!preset) {
-    console.warn("Preset inválido:", presetId);
+    console.warn("Preset invÃ¡lido:", presetId);
     return false;
   }
 
@@ -177,7 +177,7 @@ window.listarPresetsPerfil = () => Object.keys(PERFIL_PRESETS);
 
 
 
-// Devuelve todas las quincenas (14 días) que intersectan el mes visible
+// Devuelve todas las quincenas (14 dÃ­as) que intersectan el mes visible
 
 
 
@@ -269,7 +269,7 @@ function renderResumen() {
     const crupierHorasQ = r.crupierHorasQ;
 
     partes.push(
-      `${formatDate(r.start)} → ${formatDate(r.end)}` +
+      `${formatDate(r.start)} â†’ ${formatDate(r.end)}` +
       ` | Sup: ${formatearDiasHoras(qt.supervisor)} (${qt.supervisor}h)` +
       ` | Desc: ${descuentoQ}h` +
       ` | Crup: ${formatearDiasHoras(crupierHorasQ)} (${crupierHorasQ}h)` +
@@ -385,7 +385,7 @@ function renderCalendarGrid() {
       } else {
         // NORMAL
 
-        // ✅ REGLA NUEVA: si es día completo SOLO Supervisor (cr=0 y sup=max), mostrar SUPER (también en CS)
+        // âœ… REGLA NUEVA: si es dÃ­a completo SOLO Supervisor (cr=0 y sup=max), mostrar SUPER (tambiÃ©n en CS)
         if (cr === 0 && sup === MAX_HORAS_DIA()) {
           summary.textContent = "SUPER";
         } else {
@@ -473,15 +473,15 @@ let personaActivaId = null;
 
 // Todas las personas
 let personas = {};
-// Alias usado por toda la app (NO cambiar el resto del código)
+// Alias usado por toda la app (NO cambiar el resto del cÃ³digo)
 let jornadas = [];
 
 
-// Índice en memoria (NO se persiste). Clave: "YYYY-MM-DD" (fecha ISO LOCAL normalizada)
+// Ãndice en memoria (NO se persiste). Clave: "YYYY-MM-DD" (fecha ISO LOCAL normalizada)
 let jornadasByFecha = new Map();
 
 function rebuildJornadasIndex() {
-  // 1) Normaliza fechas + elimina duplicados por fecha (se queda con la última)
+  // 1) Normaliza fechas + elimina duplicados por fecha (se queda con la Ãºltima)
   if (!Array.isArray(jornadas)) {
     jornadas = [];
   }
@@ -495,7 +495,7 @@ function rebuildJornadasIndex() {
     const iso = dn_normalizarFecha(j.fecha);
     if (!iso) continue;
 
-    if (usados.has(iso)) continue; // elimina duplicado (se conserva la última ocurrencia)
+    if (usados.has(iso)) continue; // elimina duplicado (se conserva la Ãºltima ocurrencia)
     usados.add(iso);
 
     if (j.fecha !== iso) j.fecha = iso; // normalizar in-place
@@ -504,7 +504,7 @@ function rebuildJornadasIndex() {
 
   uniqueRev.reverse();
 
-  // Mantener la MISMA referencia de array (importante para el resto del código)
+  // Mantener la MISMA referencia de array (importante para el resto del cÃ³digo)
   jornadas.length = 0;
   jornadas.push(...uniqueRev);
 
@@ -513,7 +513,7 @@ function rebuildJornadasIndex() {
   for (const j of jornadas) {
     const iso = dn_normalizarFecha(j?.fecha);
     if (!iso) continue;
-    // j ya está normalizada arriba, pero por seguridad:
+    // j ya estÃ¡ normalizada arriba, pero por seguridad:
     j.fecha = iso;
     jornadasByFecha.set(iso, j);
   }
@@ -531,8 +531,8 @@ function getJornadaByFecha(fechaIso) {
 function borrarPersonaActiva() {
   if (!personaActivaId || !personas || !personas[personaActivaId]) return false;
   const nombre = personas[personaActivaId]?.nombre || personaActivaId;
-  // Confirmación inline pendiente (por ahora: sin popup)
-  // console.warn(`[borrarPersonaActiva] borrando sin confirmación: ${nombre}`);
+  // ConfirmaciÃ³n inline pendiente (por ahora: sin popup)
+  // console.warn(`[borrarPersonaActiva] borrando sin confirmaciÃ³n: ${nombre}`);
 
   const idBorrada = personaActivaId;
 
@@ -543,7 +543,7 @@ function borrarPersonaActiva() {
   const ids = Object.keys(personas || {});
   personaActivaId = ids[0] || null;
 
-  // 3) re-activar (perfil + categoría + alias jornadas) o limpiar todo si quedó vacío
+  // 3) re-activar (perfil + categorÃ­a + alias jornadas) o limpiar todo si quedÃ³ vacÃ­o
   if (personaActivaId && personas[personaActivaId]) {
     activarPersona(personaActivaId, { render: false, persistir: false });
   } else {
@@ -553,13 +553,13 @@ function borrarPersonaActiva() {
     jornadasByFecha = new Map();
   }
 
-  // 4) reconstruir índice (por seguridad)
+  // 4) reconstruir Ã­ndice (por seguridad)
   rebuildJornadasIndex();
 
   // 5) persistir (overwrite para que NO reaparezca la persona borrada)
   guardarPersonas({ overwrite: true });
 
-  // 6) estado UI + render único
+  // 6) estado UI + render Ãºnico
   setAppState(decideInitialState());
   renderByAppState();
 
@@ -572,7 +572,7 @@ function borrarPersonaActiva() {
 function findIndexJornadaPorFecha(fechaIso) {
   const key = dn_normalizarFecha(fechaIso);
   if (!key) return -1;
-  // El map asegura que como máximo hay 1 por fecha, así que este findIndex es seguro.
+  // El map asegura que como mÃ¡ximo hay 1 por fecha, asÃ­ que este findIndex es seguro.
   return jornadas.findIndex((j) => dn_normalizarFecha(j?.fecha) === key);
 }
 
@@ -580,7 +580,7 @@ function ensurePlaceholderJornada(fechaIso) {
   const key = dn_normalizarFecha(fechaIso);
   if (!key) return -1;
 
-  // Asegurar índice listo
+  // Asegurar Ã­ndice listo
   if (!jornadasByFecha || !(jornadasByFecha instanceof Map)) {
     jornadasByFecha = new Map();
   }
@@ -594,9 +594,9 @@ function ensurePlaceholderJornada(fechaIso) {
     return idx;
   }
 
-  // Crear placeholder vacío
+  // Crear placeholder vacÃ­o
   const nueva = {
-    fecha: key, // ✅ ISO en storage (LOCAL normalizado)
+    fecha: key, // âœ… ISO en storage (LOCAL normalizado)
     crupier: 0,
     supervisor: 0,
     falta: false,
@@ -632,7 +632,7 @@ function removeJornadaAtIndex(idx) {
 // ==========================
 // APP STATE (flujo UI)
 // ==========================
-// La UI NO decide "por intuición"; decide por appState.
+// La UI NO decide "por intuiciÃ³n"; decide por appState.
 const APP_STATES = Object.freeze({
   NO_PERSONAS: "NO_PERSONAS",
   SETUP_PERSONA: "SETUP_PERSONA",
@@ -649,7 +649,7 @@ function decideInitialState() {
   const ids = Object.keys(personas || {});
   if (ids.length === 0) return APP_STATES.NO_PERSONAS;
 
-  // Si existe una única persona llamada "Persona 1" (caso legacy), tratamos como setup.
+  // Si existe una Ãºnica persona llamada "Persona 1" (caso legacy), tratamos como setup.
   const esPersonaDefault =
     ids.length === 1 &&
     (String(personas[ids[0]]?.nombre || "").trim().toLowerCase() === "persona 1");
@@ -679,7 +679,7 @@ function psMostrarSetup(mostrar) {
 }
 
 function renderByAppState() {
-  // Botón "+ Nueva persona" siempre visible si existe
+  // BotÃ³n "+ Nueva persona" siempre visible si existe
   const btnNueva = document.getElementById("btnNuevaPersona");
   if (btnNueva) btnNueva.hidden = false;
 
@@ -702,10 +702,10 @@ function renderByAppState() {
   // NO_PERSONAS o SETUP_PERSONA
   psMostrarSetup(true);
 
-  // En NO_PERSONAS, dejamos el selector vacío (si existe) y sin interacción.
+  // En NO_PERSONAS, dejamos el selector vacÃ­o (si existe) y sin interacciÃ³n.
   if (sel) sel.innerHTML = "";
 }
-// Categoría activa de la persona (CS = Crupier/Supervisor, S = solo Supervisor)
+// CategorÃ­a activa de la persona (CS = Crupier/Supervisor, S = solo Supervisor)
 let CATEGORIA_ACTUAL = "CS";
 const ES_SOLO_SUP = () => CATEGORIA_ACTUAL === "S";
 const DIA_DEFAULT = () => (ES_SOLO_SUP()
@@ -726,8 +726,8 @@ function cargarPersonas() {
   try {
     const state = personasRepo.loadState();
 
-    // --- Caso 1: storage nuevo vacío ---
-    // Si no hay datos en el storage nuevo, NO crear Persona 1 automáticamente.
+    // --- Caso 1: storage nuevo vacÃ­o ---
+    // Si no hay datos en el storage nuevo, NO crear Persona 1 automÃ¡ticamente.
     // Solo migramos desde el esquema viejo si existen jornadas viejas reales.
     if (!state) {
       const legacyJornadas = jornadasRepo.loadLegacy();
@@ -762,7 +762,7 @@ function cargarPersonas() {
     personas = state.personas || {};
     personaActivaId = state.personaActivaId;
 
-    // Limpieza: si ya existe storage nuevo, vaciamos legacy para evitar confusión
+    // Limpieza: si ya existe storage nuevo, vaciamos legacy para evitar confusiÃ³n
     try {
       const legacy = jornadasRepo.loadLegacy();
       if (Array.isArray(legacy) && legacy.length > 0) {
@@ -886,7 +886,7 @@ function activarPersona(personaId, opts = {}) {
     ? personas[personaId].jornadas
     : [];
 
-  // 2) Reconstruir índice SIEMPRE (fuente única de verdad)
+  // 2) Reconstruir Ã­ndice SIEMPRE (fuente Ãºnica de verdad)
   rebuildJornadasIndex();
 
   // 3) Persistir estado si corresponde
@@ -932,7 +932,7 @@ function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar
   const cat = (categoria === "S") ? "S" : "CS";
 
   const h = _clampNumero(horasPorDia, 0.5, 9, 8);
-  // redondeo a múltiplos de 0.5
+  // redondeo a mÃºltiplos de 0.5
   const horas = Math.round(h * 2) / 2;
 
   const libres = Math.round(_clampNumero(libresPorQuincena, 2, 12, 3));
@@ -943,7 +943,7 @@ function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar
     perfil: {
       horasPorDia: horas,
       libresPorQuincena: libres,
-      topeQuincena: 88, // por ahora fijo según tu regla
+      topeQuincena: 88, // por ahora fijo segÃºn tu regla
     },
     jornadas: [],
   };
@@ -951,7 +951,7 @@ function crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, activar
   // Guardar
   guardarPersonas();
 
-  // Activar si se pidió
+  // Activar si se pidiÃ³
   if (activar) {
     activarPersona(id, { render: true, persistir: true });
   }
@@ -970,7 +970,7 @@ window.crearPersona = (nombre, categoria, horasPorDia, libresPorQuincena, activa
 // JORNADAS - PERSISTENCIA
 // ==========================
 // Fase 3: la UI no toca localStorage. Toda persistencia pasa por repositorios.
-// En esta versión legacy, las jornadas se guardan dentro de la persona activa (guardarPersonas()).
+// En esta versiÃ³n legacy, las jornadas se guardan dentro de la persona activa (guardarPersonas()).
 
 function guardarJornadas() {
   guardarPersonas();
@@ -989,7 +989,7 @@ window.limpiarJornadasFantasma80 = function limpiarJornadasFantasma80() {
   const antes = jornadas.length;
 
   const nuevas = jornadas.filter(j => {
-    // Remover solamente NORMAL 8/0 sin flags (día asumido)
+    // Remover solamente NORMAL 8/0 sin flags (dÃ­a asumido)
     if (dn_esNormalAsumida80(j)) return false;
     return true;
   });
@@ -1035,13 +1035,13 @@ function cargarJornadas() {
   // mantener referencia del array original
   jornadas.length = 0;
   jornadas.push(...normalizadas);
-  // Reconstruir índice en memoria + eliminar duplicados
+  // Reconstruir Ã­ndice en memoria + eliminar duplicados
   rebuildJornadasIndex();
 
   // Si migramos, re-guardamos para no repetir conversiones
   if (huboMigracion) {
     guardarJornadas();
-    console.log("Migración OK: fechas normalizadas a ISO (YYYY-MM-DD).");
+    console.log("MigraciÃ³n OK: fechas normalizadas a ISO (YYYY-MM-DD).");
   }
 }
 
@@ -1055,16 +1055,16 @@ function buscarJornadaPorFecha(fecha) {
 function pedirHorasConReintento(titulo, valorActual) {
   while (true) {
     const s = uiPrompt(titulo, valorActual);
-    if (s === null) return null; // canceló
+    if (s === null) return null; // cancelÃ³
 
     const n = dn_normalizarNumero(s);
 
     if (!dn_esNumeroValido(n)) {
-      uiAlert("Valor inválido. Usá múltiplos de 0.5 (ej: 6, 7.5) y no negativos.");
+      uiAlert("Valor invÃ¡lido. UsÃ¡ mÃºltiplos de 0.5 (ej: 6, 7.5) y no negativos.");
       continue;
     }
 
-    return n; // válido
+    return n; // vÃ¡lido
   }
 }
 
@@ -1072,7 +1072,7 @@ function pedirHorasConReintento(titulo, valorActual) {
 function pedirSupervisorConTope(crupier, valorActual, maxTotal = MAX_HORAS_DIA()) {
   while (true) {
     const sup = pedirHorasConReintento(
-      "Horas de Supervisor (múltiplos de 0.5):",
+      "Horas de Supervisor (mÃºltiplos de 0.5):",
       valorActual
     );
     if (sup === null) return null;
@@ -1097,7 +1097,7 @@ function editarJornada(index) {
 
   const j = jornadas[index] || {};
 
-  // Tipo por flags (lógica pura en domain)
+  // Tipo por flags (lÃ³gica pura en domain)
   const tipo = dn_getTipoFromFlags(j);
 
   // Radios
@@ -1105,7 +1105,7 @@ function editarJornada(index) {
   if (r) r.checked = true;
 
   // Inputs horas
-  const inpCr = document.getElementById("mjCrupier");
+  const inpCr = document.getElementById("mjDesc");
   const inpSup = document.getElementById("mjSupervisor");
   if (inpCr) inpCr.value = (j.crupier ?? 0);
   if (inpSup) inpSup.value = (j.supervisor ?? 0);
@@ -1117,7 +1117,7 @@ function editarJornada(index) {
     return;
   }
 
-  // ====== ✅ Tope LIBRE: deshabilitar radio si ya hay 3 en la quincena ======
+  // ====== âœ… Tope LIBRE: deshabilitar radio si ya hay 3 en la quincena ======
   try {
     const radioLibre = document.querySelector('input[name="mjTipo"][value="libre"]');
     if (radioLibre) {
@@ -1174,7 +1174,7 @@ function editarJornada(index) {
   }
   // ====== FIN TOPE LIBRE ======
 
-  // Aplicar UI según tipo si existe helper
+  // Aplicar UI segÃºn tipo si existe helper
   if (window._mj_aplicarUIporTipo) window._mj_aplicarUIporTipo();
 
   // Mostrar (forzado y limpio)
@@ -1219,7 +1219,7 @@ let _mjIndexActual = null;
 let _mjPaso = "cr";   // "cr" o "sup"
 let _mjTempCr = 0;
 
-// Guardamos el estado original del registro al abrir el modal (para decidir si es un "placeholder vacío")
+// Guardamos el estado original del registro al abrir el modal (para decidir si es un "placeholder vacÃ­o")
 let _mjEraPlaceholderVacio = false;
 let _mjOriginalCr = 0;
 let _mjOriginalSup = 0;
@@ -1239,7 +1239,7 @@ function _mjLabelDeInput(inputId) {
 function _mjSetPaso(paso) {
   _mjPaso = paso;
 
-  const lblCr = _mjLabelDeInput("mjCrupier");
+  const lblCr = _mjLabelDeInput("mjDesc");
   const lblSup = _mjLabelDeInput("mjSupervisor");
   const btnOk = _mjEl("mjOk");
 
@@ -1248,7 +1248,7 @@ function _mjSetPaso(paso) {
     if (lblSup) lblSup.hidden = true;
     if (btnOk) btnOk.textContent = "Siguiente";
     setTimeout(() => {
-      const cr = _mjEl("mjCrupier");
+      const cr = _mjEl("mjDesc");
       if (cr) { cr.focus(); cr.select(); }
     }, 0);
 
@@ -1323,7 +1323,7 @@ function _mjTipoLabel(tipo) {
 
 function _mjFormatoFechaDMY(isoLike) {
   const key = dn_normalizarFecha(isoLike);
-  if (!key) return "—";
+  if (!key) return "â€”";
   // key: YYYY-MM-DD
   const y = key.slice(0, 4);
   const m = key.slice(5, 7);
@@ -1356,12 +1356,12 @@ function _mjImpactoTexto(tipo, j) {
   // normal
   if (total >= MAX_HORAS_DIA()) return "Trabajado sin descuento.";
   if (total > 0) return `Genera descuento de ${MAX_HORAS_DIA() - total} hs`;
-  return "Día normal";
+  return "DÃ­a normal";
 }
 
 function _mjSetInfo(txt) {
   const el = _mjEl("mjInfo");
-  if (el) el.textContent = txt || "—";
+  if (el) el.textContent = txt || "â€”";
 }
 
 function _mjSetCambiando(txt, visible) {
@@ -1389,11 +1389,11 @@ function _mjActualizarLeyendas() {
   // Tipo seleccionado actualmente (target)
   const tipoActual = _mjGetTipo ? _mjGetTipo() : dn_getTipoFromFlags(j);
 
-  // ¿Cambia el tipo respecto al original?
+  // Â¿Cambia el tipo respecto al original?
   const difiereTipo = (tipoActual !== _mjTipoOriginal);
 
-  // ¿Cambia horas respecto al original?
-  const crTxt = ((_mjEl("mjCrupier")?.value || "") + "").trim().replace(",", ".");
+  // Â¿Cambia horas respecto al original?
+  const crTxt = ((_mjEl("mjDesc")?.value || "") + "").trim().replace(",", ".");
   const supTxt = ((_mjEl("mjSupervisor")?.value || "") + "").trim().replace(",", ".");
   const cr = crTxt === "" ? 0 : Number(crTxt);
   const sup = supTxt === "" ? 0 : Number(supTxt);
@@ -1401,13 +1401,13 @@ function _mjActualizarLeyendas() {
 
   const hayCambios = difiereTipo || difiereHoras;
 
-  // IMPORTANTE: NO tocamos mjInfo acá.
+  // IMPORTANTE: NO tocamos mjInfo acÃ¡.
   // mjInfo queda como "estado actual/original" (lo setea al abrir con _mjSetInfoSuperior).
 
   if (hayCambios) {
     _mjSetCambiando(`Cambiando a: ${_mjTipoLabel(tipoActual)}`, true);
   } else {
-    // Si preferís ocultarlo en vez de "Sin cambios.", lo cambiamos después (otro paso)
+    // Si preferÃ­s ocultarlo en vez de "Sin cambios.", lo cambiamos despuÃ©s (otro paso)
     _mjSetCambiando("Sin cambios.", true);
   }
 }
@@ -1417,7 +1417,7 @@ function _mjActualizarLeyendas() {
 
 const aplicarUIporTipo = () => {
   const tipo = _mjGetTipo();
-  const cr = _mjEl("mjCrupier");
+  const cr = _mjEl("mjDesc");
   const sup = _mjEl("mjSupervisor");
   const btnOk = _mjEl("mjOk");
 
@@ -1426,7 +1426,7 @@ const aplicarUIporTipo = () => {
   cr.disabled = !habil;
   sup.disabled = !habil;
 
-  const lblCr = _mjLabelDeInput("mjCrupier");
+  const lblCr = _mjLabelDeInput("mjDesc");
   const lblSup = _mjLabelDeInput("mjSupervisor");
 
   _mjMostrarMsg("");
@@ -1453,7 +1453,7 @@ const aplicarUIporTipo = () => {
   // =========================
 
   // Si venimos de un tipo SIN horas y pasamos a NORMAL o LIBRE TRABAJADO,
-  // forzar siempre el mismo comportamiento: 8/0 con selección.
+  // forzar siempre el mismo comportamiento: 8/0 con selecciÃ³n.
   if (
     (tipo === "normal" || tipo === "libreTrabajado") &&
     _mjTipoPrev &&
@@ -1463,7 +1463,7 @@ const aplicarUIporTipo = () => {
     sup.value = "0";
     setTimeout(() => {
       cr.focus();
-      cr.select(); // ← deja el valor seleccionado (azul)
+      cr.select(); // â† deja el valor seleccionado (azul)
     }, 0);
   }
 
@@ -1482,13 +1482,13 @@ const aplicarUIporTipo = () => {
 };
 
 function _mjLeerHoras() {
-  const crTxt = (_mjEl("mjCrupier").value || "").trim().replace(",", ".");
+  const crTxt = (_mjEl("mjDesc").value || "").trim().replace(",", ".");
   const supTxt = (_mjEl("mjSupervisor").value || "").trim().replace(",", ".");
 
   const cr = crTxt === "" ? 0 : Number(crTxt);
   const sup = supTxt === "" ? 0 : Number(supTxt);
 
-  // ✅ Validación centralizada en domain.js
+  // âœ… ValidaciÃ³n centralizada en domain.js
   const v = dn_validarHoras(cr, sup, MAX_HORAS_DIA());
   if (!v.ok) return { ok: false, msg: v.msg };
 
@@ -1521,7 +1521,7 @@ function bloquearRadioLibreSiCorresponde(fecha, jornadaActual) {
   if (msg) {
     msg.style.display = deboBloquear ? "block" : "none";
     msg.textContent = deboBloquear
-      ? `Tope alcanzado: máximo ${MAX_LIBRES_POR_QUINCENA} libres en la quincena.`
+      ? `Tope alcanzado: mÃ¡ximo ${MAX_LIBRES_POR_QUINCENA} libres en la quincena.`
       : "";
   }
 }
@@ -1532,7 +1532,7 @@ function abrirModalJornada(index) {
   const j = jornadas[index];
   _mjSetInfoSuperior(j);
 
-  // Estado original (para poder decidir si este registro nació como 'día vacío')
+  // Estado original (para poder decidir si este registro naciÃ³ como 'dÃ­a vacÃ­o')
   _mjOriginalCr = Number(j.crupier) || 0;
   _mjOriginalSup = Number(j.supervisor) || 0;
   _mjEraPlaceholderVacio = (
@@ -1541,7 +1541,7 @@ function abrirModalJornada(index) {
     !j.falta && !j.libre && !j.libreTrabajado && !j.compensado && !j.licAnual && !j.licEnfermedad && !j.licSinGoce
   );
 
-  // Pre-cargar tipo según flags existentes
+  // Pre-cargar tipo segÃºn flags existentes
   const tipo = dn_getTipoFromFlags(j);
   _mjSetTipo(tipo);
 
@@ -1550,34 +1550,34 @@ function abrirModalJornada(index) {
   _mjFechaOriginal = j.fecha;
 
   // Pre-cargar horas
-  _mjEl("mjCrupier").value = String(Number(j.crupier) || 0);
+  _mjEl("mjDesc").value = String(Number(j.crupier) || 0);
   _mjEl("mjSupervisor").value = String(Number(j.supervisor) || 0);
 
-  // ✅ Default SOLO para NORMAL (si no hay horas cargadas)
+  // âœ… Default SOLO para NORMAL (si no hay horas cargadas)
   const entraDefaultNormal =
     (tipo === "normal") &&
     (Number(j.crupier) || 0) === 0 &&
     (Number(j.supervisor) || 0) === 0;
 
   if (entraDefaultNormal) {
-    _mjEl("mjCrupier").value = String(MAX_HORAS_DIA());
+    _mjEl("mjDesc").value = String(MAX_HORAS_DIA());
     _mjEl("mjSupervisor").value = "0";
 
-    // Si era placeholder vacío, que 8/0 NO cuente como "cambio" al abrir
+    // Si era placeholder vacÃ­o, que 8/0 NO cuente como "cambio" al abrir
     if (_mjEraPlaceholderVacio) {
       _mjOriginalCr = MAX_HORAS_DIA();
       _mjOriginalSup = 0;
     }
   }
 
-  // ✅ Aplicar UI correcta (la que maneja labels + pasos)
+  // âœ… Aplicar UI correcta (la que maneja labels + pasos)
   if (window._mj_aplicarUIporTipo) {
     window._mj_aplicarUIporTipo();
   } else {
     _mjAplicarUIporTipo?.();
   }
 
-  // ✅ Forzar paso inicial coherente (si trabaja -> empezar en Crupier)
+  // âœ… Forzar paso inicial coherente (si trabaja -> empezar en Crupier)
   if (dn_horasHabilitadas(tipo)) {
     _mjPaso = "cr";
     _mjTempCr = 0;
@@ -1594,9 +1594,9 @@ function abrirModalJornada(index) {
 
 
 function cerrarModalJornada() {
-  // Si este registro nació como placeholder vacío (0/0 sin flags)
+  // Si este registro naciÃ³ como placeholder vacÃ­o (0/0 sin flags)
   // y el usuario cierra el modal sin guardar nada real, lo eliminamos
-  // para evitar "días fantasma" 0/0 en el calendario.
+  // para evitar "dÃ­as fantasma" 0/0 en el calendario.
   if (_mjIndexActual !== null) {
     const j = jornadas[_mjIndexActual];
 
@@ -1631,7 +1631,7 @@ function cerrarModalJornada() {
 // Inicializar listeners del modal (1 sola vez)
 
 // ===============================
-// LEGACY INIT (migrado a init único)
+// LEGACY INIT (migrado a init Ãºnico)
 // ===============================
 export function legacyInit() {
   if (legacyInit._didRun) return;
@@ -1650,11 +1650,11 @@ export function legacyInit() {
       // 1) Volver al tipo ORIGINAL (radio)
       _mjSetTipo(_mjTipoOriginal);
 
-      // 2) Reaplicar UI del tipo (igual que cuando cambiás radios)
+      // 2) Reaplicar UI del tipo (igual que cuando cambiÃ¡s radios)
       if (window._mj_aplicarUIporTipo) window._mj_aplicarUIporTipo();
 
       // 3) Volver a horas ORIGINALES (sin inventar MAX/0)
-      const cr = document.getElementById("mjCrupier");
+      const cr = document.getElementById("mjDesc");
       const sup = document.getElementById("mjSupervisor");
       if (cr) cr.value = String(_mjOriginalCr ?? 0);
       if (sup) sup.value = String(_mjOriginalSup ?? 0);
@@ -1666,7 +1666,7 @@ export function legacyInit() {
       // 5) Limpiar mensaje (si estuviera)
       if (typeof _mjMostrarMsg === "function") _mjMostrarMsg("");
 
-      // 6) Recalcular leyendas (debe quedar sin “Cambiando a…”)
+      // 6) Recalcular leyendas (debe quedar sin â€œCambiando aâ€¦â€)
       _mjActualizarLeyendas();
 
       // 7) Foco coherente
@@ -1705,7 +1705,7 @@ export function legacyInit() {
   const setPaso = (paso) => {
     _mjPaso = paso;
 
-    const lblCr = labelDe("mjCrupier");
+    const lblCr = labelDe("mjDesc");
     const lblSup = labelDe("mjSupervisor");
     const btnOk = _mjEl("mjOk");
 
@@ -1713,7 +1713,7 @@ export function legacyInit() {
       if (lblCr) lblCr.hidden = false;
       if (lblSup) lblSup.hidden = true;
       if (btnOk) btnOk.textContent = "Siguiente";
-      setTimeout(() => _mjEl("mjCrupier")?.focus(), 0);
+      setTimeout(() => _mjEl("mjDesc")?.focus(), 0);
     } else {
       if (lblCr) lblCr.hidden = true;
       if (lblSup) lblSup.hidden = false;
@@ -1730,7 +1730,7 @@ export function legacyInit() {
 
   const aplicarUIporTipo = () => {
     const tipo = _mjGetTipo();
-    const cr = _mjEl("mjCrupier");
+    const cr = _mjEl("mjDesc");
     const sup = _mjEl("mjSupervisor");
     const btnOk = _mjEl("mjOk");
 
@@ -1739,7 +1739,7 @@ export function legacyInit() {
     cr.disabled = !habil;
     sup.disabled = !habil;
 
-    const lblCr = labelDe("mjCrupier");
+    const lblCr = labelDe("mjDesc");
     const lblSup = labelDe("mjSupervisor");
 
     _mjMostrarMsg("");
@@ -1758,7 +1758,7 @@ export function legacyInit() {
 
     // Si trabaja: arrancar con Crupier
 
-    // ✅ Si venimos de un tipo sin horas (LIBRE/FALTA/COMPENSADO) y volvemos a NORMAL,
+    // âœ… Si venimos de un tipo sin horas (LIBRE/FALTA/COMPENSADO) y volvemos a NORMAL,
     // queremos siempre el mismo comportamiento: dejar 8 horas por defecto.
     if ((tipo === "normal" || tipo === "libreTrabajado") && _mjTipoPrev && _mjTipoPrev !== tipo) {
       const def = DIA_DEFAULT();
@@ -1792,7 +1792,7 @@ export function legacyInit() {
     const tipo = _mjGetTipo();
 
     // ===============================
-    // Control: máximo LIBRES por quincena (según perfil)
+    // Control: mÃ¡ximo LIBRES por quincena (segÃºn perfil)
     // ===============================
     if (tipo === "libre") {
       const fechaActual = dn_normalizarFecha(j?.fecha);
@@ -1821,10 +1821,10 @@ export function legacyInit() {
           }
         }
 
-        // ✅ Bloquear al intentar marcar el (máximo + 1)
+        // âœ… Bloquear al intentar marcar el (mÃ¡ximo + 1)
         if (libres >= MAX_LIBRES_QUINCENA()) {
           _mjMostrarMsg(
-            "Ya se alcanzó el máximo de días LIBRES en esta quincena. Elegí otra opción o presioná Cancelar."
+            "Ya se alcanzÃ³ el mÃ¡ximo de dÃ­as LIBRES en esta quincena. ElegÃ­ otra opciÃ³n o presionÃ¡ Cancelar."
           );
           return;
         }
@@ -1838,7 +1838,7 @@ export function legacyInit() {
     dn_aplicarTipoAFlags(j, tipo);
 
     // ===============================
-    // Tipos sin horas → guardar directo
+    // Tipos sin horas â†’ guardar directo
     // ===============================
     if (!dn_horasHabilitadas(tipo)) {
       j.crupier = 0;
@@ -1854,7 +1854,7 @@ export function legacyInit() {
     // PASO CRUPIER
     // ===============================
     if (_mjPaso === "cr") {
-      const crTxt = (_mjEl("mjCrupier").value || "").trim().replace(",", ".");
+      const crTxt = (_mjEl("mjDesc").value || "").trim().replace(",", ".");
       const crVal = crTxt === "" ? 0 : Number(crTxt);
 
       const v = dn_validarHoras(crVal, 0, MAX_HORAS_DIA());
@@ -1862,12 +1862,12 @@ export function legacyInit() {
 
       _mjTempCr = crVal;
 
-      // ✅ AVISO PREVIO AL PASO SUPERVISOR
+      // âœ… AVISO PREVIO AL PASO SUPERVISOR
       // Ahora el primer input es DESCUENTO (hs no trabajadas).
-      // Validación: Supervisor + Descuento <= MAX_HORAS_DIA()
+      // ValidaciÃ³n: Supervisor + Descuento <= MAX_HORAS_DIA()
       if ((tipo === "normal" || tipo === "libreTrabajado")) {
         const max = MAX_HORAS_DIA();
-        const desc = crVal; // (input mjCrupier == descuento)
+        const desc = crVal; // (input mjDesc == descuento)
         const fmt = (n) => {
           const s = Number(n).toFixed(1);
           return s.endsWith(".0") ? s.slice(0, -2) : s;
@@ -1876,7 +1876,7 @@ export function legacyInit() {
         if (desc > 0) {
           const supMax = Math.max(0, max - desc);
           _mjMostrarMsg(
-            `Aviso: Con descuento ${fmt(desc)} hs, el máximo de Supervisor para este día es ${fmt(supMax)} hs.`
+            `Aviso: Con descuento ${fmt(desc)} hs, el mÃ¡ximo de Supervisor para este dÃ­a es ${fmt(supMax)} hs.`
           );
         } else {
           _mjMostrarMsg("");
@@ -1897,19 +1897,19 @@ setPaso("sup");
     const v2 = dn_validarHoras(_mjTempCr, supVal, MAX_HORAS_DIA());
     if (!v2.ok) return _mjMostrarMsg(v2.msg);
 
-    // Normal / Libre trabajado: no puede ser "no trabajó" (descuento completo)
+    // Normal / Libre trabajado: no puede ser "no trabajÃ³" (descuento completo)
   // Con el nuevo modelo: DESCUENTO (input 1) + SUP (input 2) == MAX_HORAS_DIA() implica 0 hs trabajadas.
   if ((tipo === "normal" || tipo === "libreTrabajado")) {
     const max = MAX_HORAS_DIA();
     const desc = _mjTempCr;
     if ((desc + supVal) >= max && supVal === 0) {
       return _mjMostrarMsg(
-        `Con descuento ${max} hs no queda trabajo registrado. Si no trabajaste, cambiá el tipo de día.`
+        `Con descuento ${max} hs no queda trabajo registrado. Si no trabajaste, cambiÃ¡ el tipo de dÃ­a.`
       );
     }
   }
 // ===============================
-    // Regla DÍA VACÍO (normal 8/0)
+    // Regla DÃA VACÃO (normal 8/0)
     // ===============================
     const defCS = DIA_DEFAULT();
     if (tipo === "normal" && _mjTempCr === defCS.cr && supVal === defCS.sup) {
@@ -1941,7 +1941,7 @@ setPaso("sup");
       aplicarUIporTipo();
       _mjActualizarLeyendas();
 
-      // ✅ Advertencia COMPENSADO sin saldo (solo si NO estaba ya en compensado)
+      // âœ… Advertencia COMPENSADO sin saldo (solo si NO estaba ya en compensado)
       const tipo = _mjGetTipo();
 
       const msgBox = _mjEl("mjMsg");
@@ -1954,8 +1954,8 @@ setPaso("sup");
         const saldoGlobal = dn_calcularSaldoLibresTrabajadosGlobal(jornadas);
         if ((Number(saldoGlobal.saldo) || 0) < 1) {
           _mjMostrarMsg(
-            "⚠️ COMPENSADO sin saldo de Libres Trabajados.\n" +
-            "Si querés continuar igual, presioná Aceptar.\n" +
+            "âš ï¸ COMPENSADO sin saldo de Libres Trabajados.\n" +
+            "Si querÃ©s continuar igual, presionÃ¡ Aceptar.\n" +
             "Si no, Reiniciar o Cancelar."
           );
         } else {
@@ -2021,7 +2021,7 @@ window._psBindCrearPersona = function _psBindCrearPersona() {
   bindPersonaSetup();
 
   // [DESACTIVADO] Bind directo de "+ Nueva persona" (reemplazado por bindPersonaActions)
-  // Botón "+ Nueva persona" -> SIEMPRE entra a SETUP_PERSONA
+  // BotÃ³n "+ Nueva persona" -> SIEMPRE entra a SETUP_PERSONA
   // const btnNueva = document.getElementById("btnNuevaPersona");
   // if (btnNueva) {
   //   btnNueva.onclick = () => {
@@ -2032,7 +2032,7 @@ window._psBindCrearPersona = function _psBindCrearPersona() {
   //   };
   // }
 
-  // ✅ Binder único del bloque de acciones (delegación)
+  // âœ… Binder Ãºnico del bloque de acciones (delegaciÃ³n)
   bindPersonaActions();
 
   // Estado inicial + render inicial
@@ -2046,12 +2046,12 @@ window._psBindCrearPersona = function _psBindCrearPersona() {
 // ===================================================
 // SETUP PERSONA - BIND (movido fuera de legacyInit)
 // ===================================================
-// Bind del botón "Crear" del setup (idempotente)
+// Bind del botÃ³n "Crear" del setup (idempotente)
 let _psCrearBound = false;
 
 function bindPersonaSetup() {
   const btn = document.getElementById("psCrearBtn");
-  // Si el DOM todavía no tiene el setup, no marcamos bound (porque después sí va a existir)
+  // Si el DOM todavÃ­a no tiene el setup, no marcamos bound (porque despuÃ©s sÃ­ va a existir)
   if (!btn) return;
 
   if (_psCrearBound) return;
@@ -2070,7 +2070,7 @@ function bindPersonaSetup() {
     setMsg("");
 
     const nombre = (document.getElementById("psNombre")?.value || "").trim();
-    if (!nombre) { setMsg("Ingresá un nombre."); return; }
+    if (!nombre) { setMsg("IngresÃ¡ un nombre."); return; }
 
     const categoria = document.getElementById("psCategoria")?.value || "cs";
     const horasPorDia = clamp(document.getElementById("psHoras")?.value, 0.5, 9, 8);
@@ -2078,12 +2078,12 @@ function bindPersonaSetup() {
 
     crearPersona(nombre, categoria, horasPorDia, libresPorQuincena, true);
 
-    // Transición de estado: al crear, pasamos a READY.
+    // TransiciÃ³n de estado: al crear, pasamos a READY.
     setAppState(APP_STATES.READY);
     renderByAppState();
   });
 
-  // Bind del botón "Cancelar" del setup (si existe)
+  // Bind del botÃ³n "Cancelar" del setup (si existe)
   const btnCancel = document.getElementById("psCancelarBtn");
   if (btnCancel) {
     btnCancel.addEventListener("click", () => {
@@ -2132,7 +2132,7 @@ function bindSelectorPersonas() {
   bindPersonaSelect(refs, {
     onChangePersona: (id) => {
       setPersonaActiva(id);
-      renderSelectorPersonas(); // re-sincroniza selección
+      renderSelectorPersonas(); // re-sincroniza selecciÃ³n
     },
   });
 }
@@ -2144,7 +2144,7 @@ function bindSelectorPersonas() {
 
 let _personaActionsBound = false;
 
-// Estado interno de confirmación (NO window/global)
+// Estado interno de confirmaciÃ³n (NO window/global)
 let _personaDeleteConfirmOpen = false;
 
 function _personaDeleteNombreActual() {
@@ -2171,10 +2171,10 @@ function personaDeleteConfirmOpen() {
 }
 
 /**
- * Binder único del bloque #personaActions
+ * Binder Ãºnico del bloque #personaActions
  * - Event delegation
  * - Idempotente
- * - Sin lógica de negocio
+ * - Sin lÃ³gica de negocio
  */
 function bindPersonaActions() {
   if (_personaActionsBound) return;
@@ -2187,7 +2187,7 @@ function bindPersonaActions() {
     const btn = ev.target.closest("button");
     if (!btn) return;
 
-    // Cancelar confirmación
+    // Cancelar confirmaciÃ³n
     if (btn.id === "btnCancelarBorrarPersona") {
       personaDeleteConfirmClose();
       return;
@@ -2205,7 +2205,7 @@ function bindPersonaActions() {
       return;
     }
 
-    // Click en "Borrar" => abre confirmación inline
+    // Click en "Borrar" => abre confirmaciÃ³n inline
     if (btn.id === "btnBorrarPersona") {
       if (!_personaDeleteConfirmOpen) personaDeleteConfirmOpen();
       return;
@@ -2223,12 +2223,12 @@ function bindPersonaActions() {
 
 /**
  * Flujo existente de "+ Nueva persona"
- * (extraído para que el binder no tenga lógica)
+ * (extraÃ­do para que el binder no tenga lÃ³gica)
  */
 function personaActionsNuevaPersona() {
   setAppState(APP_STATES.SETUP_PERSONA);
   renderByAppState();
-  // Ahora que el DOM del setup existe, hacemos el bind del botón Crear
+  // Ahora que el DOM del setup existe, hacemos el bind del botÃ³n Crear
   bindPersonaSetup();
   setTimeout(() => {
     const input = document.getElementById("psNombre");
@@ -2237,7 +2237,7 @@ function personaActionsNuevaPersona() {
 }
 
 /**
- * Mini-modal: decide visibilidad/habilitación del botón borrar
+ * Mini-modal: decide visibilidad/habilitaciÃ³n del botÃ³n borrar
  * en base al estado actual.
  */
 function syncPersonaActionsUI() {
@@ -2257,11 +2257,11 @@ function syncPersonaActionsUI() {
   const hayPersonas = ids.length > 0;
   const activaValida = !!(personaActivaId && personas && personas[personaActivaId]);
 
-  // Botón borrar: visible solo si hay personas
+  // BotÃ³n borrar: visible solo si hay personas
   btnBorrar.hidden = !hayPersonas;
   btnBorrar.disabled = !(hayPersonas && activaValida);
 
-  // Si ya no se puede confirmar (por ejemplo borraste y quedó vacío), cerramos confirmación
+  // Si ya no se puede confirmar (por ejemplo borraste y quedÃ³ vacÃ­o), cerramos confirmaciÃ³n
   if (_personaDeleteConfirmOpen && !(hayPersonas && activaValida)) {
     _personaDeleteConfirmOpen = false;
   }
@@ -2274,14 +2274,14 @@ function syncPersonaActionsUI() {
 
   if (txt) {
   if (_personaDeleteConfirmOpen) {
-    txt.textContent = "¿Borrar ésta persona y sus jornadas?";
+    txt.textContent = "Â¿Borrar Ã©sta persona y sus jornadas?";
   } else {
     txt.textContent = "";
   }
 }
 
 
-  // Bloquear controles durante confirmación (evita cambios de persona mientras confirmás)
+  // Bloquear controles durante confirmaciÃ³n (evita cambios de persona mientras confirmÃ¡s)
   const lock = _personaDeleteConfirmOpen;
 
   if (btnConfirm) btnConfirm.disabled = !(lock && hayPersonas && activaValida);
@@ -2315,11 +2315,11 @@ function _mjImpactoOperativo(tipo) {
     case "falta":
       return `Genera descuento de ${MAX_HORAS_DIA()} hs`;
     case "libre":
-      return "No descuenta horas (día libre)";
+      return "No descuenta horas (dÃ­a libre)";
     case "libreTrabajado":
-      return "Suma 1 día LT";
+      return "Suma 1 dÃ­a LT";
     case "compensado":
-      return "Usa 1 día LT (compensa)";
+      return "Usa 1 dÃ­a LT (compensa)";
     case "normal":
     default:
       return "Trabajado sin descuento";
@@ -2331,14 +2331,14 @@ function _mjSetInfoSuperior(jornada) {
   if (!el) return;
 
   const fechaISO = jornada?.fecha || "";
-  const fechaTxt = fechaISO ? formatDate(new Date(fechaISO)) : "—";
+  const fechaTxt = fechaISO ? formatDate(new Date(fechaISO)) : "â€”";
 
   const tipo = dn_getTipoFromFlags(jornada);
   const tipoTxt = _mjNombreTipo(tipo);
   const impacto = _mjImpactoOperativo(tipo);
 
   el.innerHTML = `
-    <div>${fechaTxt} · ${tipoTxt}</div>
+    <div>${fechaTxt} Â· ${tipoTxt}</div>
     <div>Impacto: ${impacto}</div>
   `;
 }
