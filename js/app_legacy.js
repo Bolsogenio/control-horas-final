@@ -1183,13 +1183,6 @@ function editarJornada(index) {
   modal.style.display = "";
 
   console.log("Modal abierto:", modal.hidden === false);
-
-  setTimeout(() => {
-    if (inpCr) {
-      inpCr.focus();
-      inpCr.select();
-    }
-  }, 0);
 }
 
 
@@ -1220,6 +1213,8 @@ let _mjPaso = "sup";  // "sup" o "desc"
 let _mjTempDesc = 0;
 let _mjTempSup = 0;
 
+let _mjTipoPrev = null;
+
 // Guardamos el estado original del registro al abrir el modal (para decidir si es un "placeholder vacío")
 let _mjEraPlaceholderVacio = false;
 let _mjOriginalCr = 0;
@@ -1244,29 +1239,27 @@ function _mjSetPaso(paso) {
   const lblSup = _mjLabelDeInput("mjSupervisor");
   const btnOk = _mjEl("mjOk");
 
-  if (paso === "cr") {
-    if (lblDesc) lblDesc.hidden = false;
-    if (lblSup) lblSup.hidden = true;
-    if (btnOk) btnOk.textContent = "Siguiente";
-    setTimeout(() => {
-      const cr = _mjEl("mjDesc");
-      if (cr) { cr.focus(); cr.select(); }
-    }, 0);
-
-  } else {
-    if (lblDesc) lblDesc.hidden = true;
+  if (paso === "sup") {
     if (lblSup) lblSup.hidden = false;
+    if (lblDesc) lblDesc.hidden = true;
     if (btnOk) btnOk.textContent = "Continuar";
     setTimeout(() => {
-      const inp = document.getElementById("mjSupervisor");
-      if (inp) {
-        inp.focus();
-        inp.select();
-      }
+      const inp = _mjEl("mjSupervisor");
+      if (inp) { inp.focus(); inp.select(); }
     }, 0);
-
+    return;
   }
+
+  // paso === "desc"
+  if (lblSup) lblSup.hidden = true;
+  if (lblDesc) lblDesc.hidden = false;
+  if (btnOk) btnOk.textContent = "Guardar";
+  setTimeout(() => {
+    const inp = _mjEl("mjDesc");
+    if (inp) { inp.focus(); inp.select(); }
+  }, 0);
 }
+
 
 
 
@@ -1418,65 +1411,52 @@ function _mjActualizarLeyendas() {
 
 const aplicarUIporTipo = () => {
   const tipo = _mjGetTipo();
-  const cr = _mjEl("mjDesc");
-  const sup = _mjEl("mjSupervisor");
+  const descInp = _mjEl("mjDesc");
+  const supInp = _mjEl("mjSupervisor");
   const btnOk = _mjEl("mjOk");
 
   const habil = dn_horasHabilitadas(tipo);
 
-  cr.disabled = !habil;
-  sup.disabled = !habil;
+  if (descInp) descInp.disabled = !habil;
+  if (supInp) supInp.disabled = !habil;
 
   const lblDesc = _mjLabelDeInput("mjDesc");
   const lblSup = _mjLabelDeInput("mjSupervisor");
 
   _mjMostrarMsg("");
 
-  // =========================
-  // TIPOS SIN HORAS
-  // =========================
+  // Tipos sin horas
   if (!habil) {
     if (lblDesc) lblDesc.hidden = true;
     if (lblSup) lblSup.hidden = true;
     if (btnOk) btnOk.textContent = "Continuar";
 
-    cr.value = "0";
-    sup.value = "0";
+    if (descInp) descInp.value = "0";
+    if (supInp) supInp.value = "0";
 
-    _mjTempDesc = 0;
     _mjPaso = "sup";
+    _mjTempDesc = 0;
+    _mjTempSup = 0;
     _mjTipoPrev = tipo;
     return;
   }
 
-  // =========================
-  // TIPOS CON HORAS
-  // =========================
+  // Tipos con horas: SIEMPRE arrancar pidiendo Supervisor (Paso 1)
 
-  // Si venimos de un tipo SIN horas y pasamos a NORMAL o LIBRE TRABAJADO,
-  // forzar siempre el mismo comportamiento: 8/0 con selección.
-  if (
-    (tipo === "normal" || tipo === "libreTrabajado") &&
-    _mjTipoPrev &&
-    _mjTipoPrev !== tipo
-  ) {
-    cr.value = "0";
-    sup.value = "0";
-    setTimeout(() => {
-      cr.focus();
-      cr.select(); // ← deja el valor seleccionado (azul)
-    }, 0);
+  // Si venimos de un tipo sin horas y pasamos a Normal/Libre trabajado, forzamos un arranque determinista
+  if ((tipo === "normal" || tipo === "libreTrabajado") && _mjTipoPrev && _mjTipoPrev !== tipo) {
+    if (supInp) supInp.value = "0";
+    if (descInp) descInp.value = "0"; // queda oculto hasta el paso 2
   }
 
-  if (lblDesc) lblDesc.hidden = false;
-  if (lblSup) lblSup.hidden = true;
+  if (lblSup) lblSup.hidden = false;
+  if (lblDesc) lblDesc.hidden = true;
 
   _mjPaso = "sup";
-  if (btnOk) btnOk.textContent = "Aceptar";
+  if (btnOk) btnOk.textContent = "Continuar";
 
   setTimeout(() => {
-    cr.focus();
-    cr.select();
+    if (supInp) { supInp.focus(); supInp.select(); }
   }, 0);
 
   _mjTipoPrev = tipo;
@@ -1578,11 +1558,12 @@ function abrirModalJornada(index) {
     _mjAplicarUIporTipo?.();
   }
 
-  // ✅ Forzar paso inicial coherente (si trabaja -> empezar en Crupier)
+  // ✅ Forzar paso inicial coherente (si trabaja -> empezar en Supervisor)
   if (dn_horasHabilitadas(tipo)) {
     _mjPaso = "sup";
+    _mjTempSup = 0;
     _mjTempDesc = 0;
-    _mjSetPaso("cr");
+    _mjSetPaso("sup");
   } else {
     setTimeout(() => _mjEl("mjOk")?.focus(), 0);
   }
@@ -1699,91 +1680,7 @@ export function legacyInit() {
   _mjPaso = "sup";
   _mjTempDesc = 0;
 
-  const labelDe = (inputId) => {
-    const inp = document.getElementById(inputId);
-    return inp ? inp.closest("label") : null;
-  };
-
-  const setPaso = (paso) => {
-    _mjPaso = paso;
-
-    const lblDesc = labelDe("mjDesc");
-    const lblSup = labelDe("mjSupervisor");
-    const btnOk = _mjEl("mjOk");
-
-    if (paso === "sup") {
-      if (lblSup) lblSup.hidden = false;
-      if (lblDesc) lblDesc.hidden = true;
-      if (btnOk) btnOk.textContent = "Continuar";
-      setTimeout(() => {
-        const inp = _mjEl("mjSupervisor");
-        if (inp) { inp.focus(); inp.select(); }
-      }, 0);
-    } else {
-      // paso === "desc"
-      if (lblSup) lblSup.hidden = true;
-      if (lblDesc) lblDesc.hidden = false;
-      if (btnOk) btnOk.textContent = "Guardar";
-      setTimeout(() => {
-        const inp = _mjEl("mjDesc");
-        if (inp) { inp.focus(); inp.select(); }
-      }, 0);
-    }
-  };
-
-  let _mjTipoPrev = null;
-
-  const aplicarUIporTipo = () => {
-    const tipo = _mjGetTipo();
-    const cr = _mjEl("mjDesc");
-    const sup = _mjEl("mjSupervisor");
-    const btnOk = _mjEl("mjOk");
-
-    const habil = dn_horasHabilitadas(tipo);
-
-    cr.disabled = !habil;
-    sup.disabled = !habil;
-
-    const lblDesc = labelDe("mjDesc");
-    const lblSup = labelDe("mjSupervisor");
-
-    _mjMostrarMsg("");
-
-    if (!habil) {
-      if (lblDesc) lblDesc.hidden = true;
-      if (lblSup) lblSup.hidden = true;
-      if (btnOk) btnOk.textContent = "Continuar";
-      cr.value = "0";
-      sup.value = "0";
-      _mjTempDesc = 0;
-      _mjTempSup = 0;
-      _mjPaso = "sup";
-      _mjTipoPrev = tipo;
-      return;
-    }
-
-    // Si trabaja: arrancar con Supervisor
-
-    // ✅ Si venimos de un tipo sin horas (LIBRE/FALTA/COMPENSADO) y volvemos a NORMAL,
-    // queremos siempre el mismo comportamiento: dejar 8 horas por defecto.
-    if ((tipo === "normal" || tipo === "libreTrabajado") && _mjTipoPrev && _mjTipoPrev !== tipo) {
-      const def = DIA_DEFAULT();
-      cr.value = String(def.cr);
-      sup.value = String(def.sup);
-    }
-
-    if (ES_SOLO_SUP()) {
-      if (lblDesc) lblDesc.hidden = true;
-      if (lblSup) lblSup.hidden = false;
-      setPaso("sup");
-    } else {
-      if (lblDesc) lblDesc.hidden = true;
-      if (lblSup) lblSup.hidden = false;
-      setPaso("sup");
-    }
-
-    _mjTipoPrev = tipo;
-  };
+  // UI del modal (unificada): usamos aplicarUIporTipo + _mjSetPaso globales
 
   // Cancelar
   _mjEl("mjCancel").addEventListener("click", () => cerrarModalJornada());
@@ -1908,7 +1805,7 @@ export function legacyInit() {
       // Limpiar mensaje
       _mjMostrarMsg("");
 
-      setPaso("desc");
+      _mjSetPaso("desc");
       return;
     }
 
