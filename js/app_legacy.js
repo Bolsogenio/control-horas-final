@@ -1216,8 +1216,9 @@ function renderCalendar() {
 // ===== Modal Jornada (HTML) - controlador =====
 let _mjIndexActual = null;
 
-let _mjPaso = "cr";   // "cr" o "sup"
-let _mjTempCr = 0;
+let _mjPaso = "sup";  // "sup" o "desc"
+let _mjTempDesc = 0;
+let _mjTempSup = 0;
 
 // Guardamos el estado original del registro al abrir el modal (para decidir si es un "placeholder vacío")
 let _mjEraPlaceholderVacio = false;
@@ -1239,12 +1240,12 @@ function _mjLabelDeInput(inputId) {
 function _mjSetPaso(paso) {
   _mjPaso = paso;
 
-  const lblCr = _mjLabelDeInput("mjDesc");
+  const lblDesc = _mjLabelDeInput("mjDesc");
   const lblSup = _mjLabelDeInput("mjSupervisor");
   const btnOk = _mjEl("mjOk");
 
   if (paso === "cr") {
-    if (lblCr) lblCr.hidden = false;
+    if (lblDesc) lblDesc.hidden = false;
     if (lblSup) lblSup.hidden = true;
     if (btnOk) btnOk.textContent = "Siguiente";
     setTimeout(() => {
@@ -1253,7 +1254,7 @@ function _mjSetPaso(paso) {
     }, 0);
 
   } else {
-    if (lblCr) lblCr.hidden = true;
+    if (lblDesc) lblDesc.hidden = true;
     if (lblSup) lblSup.hidden = false;
     if (btnOk) btnOk.textContent = "Continuar";
     setTimeout(() => {
@@ -1426,7 +1427,7 @@ const aplicarUIporTipo = () => {
   cr.disabled = !habil;
   sup.disabled = !habil;
 
-  const lblCr = _mjLabelDeInput("mjDesc");
+  const lblDesc = _mjLabelDeInput("mjDesc");
   const lblSup = _mjLabelDeInput("mjSupervisor");
 
   _mjMostrarMsg("");
@@ -1435,15 +1436,15 @@ const aplicarUIporTipo = () => {
   // TIPOS SIN HORAS
   // =========================
   if (!habil) {
-    if (lblCr) lblCr.hidden = true;
+    if (lblDesc) lblDesc.hidden = true;
     if (lblSup) lblSup.hidden = true;
     if (btnOk) btnOk.textContent = "Continuar";
 
     cr.value = "0";
     sup.value = "0";
 
-    _mjTempCr = 0;
-    _mjPaso = "cr";
+    _mjTempDesc = 0;
+    _mjPaso = "sup";
     _mjTipoPrev = tipo;
     return;
   }
@@ -1467,10 +1468,10 @@ const aplicarUIporTipo = () => {
     }, 0);
   }
 
-  if (lblCr) lblCr.hidden = false;
+  if (lblDesc) lblDesc.hidden = false;
   if (lblSup) lblSup.hidden = true;
 
-  _mjPaso = "cr";
+  _mjPaso = "sup";
   if (btnOk) btnOk.textContent = "Aceptar";
 
   setTimeout(() => {
@@ -1579,8 +1580,8 @@ function abrirModalJornada(index) {
 
   // ✅ Forzar paso inicial coherente (si trabaja -> empezar en Crupier)
   if (dn_horasHabilitadas(tipo)) {
-    _mjPaso = "cr";
-    _mjTempCr = 0;
+    _mjPaso = "sup";
+    _mjTempDesc = 0;
     _mjSetPaso("cr");
   } else {
     setTimeout(() => _mjEl("mjOk")?.focus(), 0);
@@ -1660,8 +1661,9 @@ export function legacyInit() {
       if (sup) sup.value = String(_mjOriginalSup ?? 0);
 
       // 4) Reset del flujo de 2 pasos (Normal / Libre Trab.)
-      _mjTempCr = 0;
-      _mjPaso = "cr";
+      _mjTempDesc = 0;
+      _mjTempSup = 0;
+      _mjPaso = "sup";
 
       // 5) Limpiar mensaje (si estuviera)
       if (typeof _mjMostrarMsg === "function") _mjMostrarMsg("");
@@ -1694,8 +1696,8 @@ export function legacyInit() {
   modal.hidden = true;
 
   // Estado flujo 2 pasos
-  _mjPaso = "cr";
-  _mjTempCr = 0;
+  _mjPaso = "sup";
+  _mjTempDesc = 0;
 
   const labelDe = (inputId) => {
     const inp = document.getElementById(inputId);
@@ -1705,24 +1707,27 @@ export function legacyInit() {
   const setPaso = (paso) => {
     _mjPaso = paso;
 
-    const lblCr = labelDe("mjDesc");
+    const lblDesc = labelDe("mjDesc");
     const lblSup = labelDe("mjSupervisor");
     const btnOk = _mjEl("mjOk");
 
-    if (paso === "cr") {
-      if (lblCr) lblCr.hidden = false;
-      if (lblSup) lblSup.hidden = true;
-      if (btnOk) btnOk.textContent = "Siguiente";
-      setTimeout(() => _mjEl("mjDesc")?.focus(), 0);
-    } else {
-      if (lblCr) lblCr.hidden = true;
+    if (paso === "sup") {
       if (lblSup) lblSup.hidden = false;
+      if (lblDesc) lblDesc.hidden = true;
       if (btnOk) btnOk.textContent = "Continuar";
       setTimeout(() => {
-        const sup = _mjEl("mjSupervisor");
-        if (sup) { sup.focus(); sup.select(); }
+        const inp = _mjEl("mjSupervisor");
+        if (inp) { inp.focus(); inp.select(); }
       }, 0);
-
+    } else {
+      // paso === "desc"
+      if (lblSup) lblSup.hidden = true;
+      if (lblDesc) lblDesc.hidden = false;
+      if (btnOk) btnOk.textContent = "Guardar";
+      setTimeout(() => {
+        const inp = _mjEl("mjDesc");
+        if (inp) { inp.focus(); inp.select(); }
+      }, 0);
     }
   };
 
@@ -1739,24 +1744,25 @@ export function legacyInit() {
     cr.disabled = !habil;
     sup.disabled = !habil;
 
-    const lblCr = labelDe("mjDesc");
+    const lblDesc = labelDe("mjDesc");
     const lblSup = labelDe("mjSupervisor");
 
     _mjMostrarMsg("");
 
     if (!habil) {
-      if (lblCr) lblCr.hidden = true;
+      if (lblDesc) lblDesc.hidden = true;
       if (lblSup) lblSup.hidden = true;
       if (btnOk) btnOk.textContent = "Continuar";
       cr.value = "0";
       sup.value = "0";
-      _mjTempCr = 0;
-      _mjPaso = "cr";
+      _mjTempDesc = 0;
+      _mjTempSup = 0;
+      _mjPaso = "sup";
       _mjTipoPrev = tipo;
       return;
     }
 
-    // Si trabaja: arrancar con Crupier
+    // Si trabaja: arrancar con Supervisor
 
     // ✅ Si venimos de un tipo sin horas (LIBRE/FALTA/COMPENSADO) y volvemos a NORMAL,
     // queremos siempre el mismo comportamiento: dejar 8 horas por defecto.
@@ -1767,13 +1773,13 @@ export function legacyInit() {
     }
 
     if (ES_SOLO_SUP()) {
-      if (lblCr) lblCr.hidden = true;
+      if (lblDesc) lblDesc.hidden = true;
       if (lblSup) lblSup.hidden = false;
       setPaso("sup");
     } else {
-      if (lblCr) lblCr.hidden = false;
-      if (lblSup) lblSup.hidden = true;
-      setPaso("cr");
+      if (lblDesc) lblDesc.hidden = true;
+      if (lblSup) lblSup.hidden = false;
+      setPaso("sup");
     }
 
     _mjTipoPrev = tipo;
@@ -1851,70 +1857,94 @@ export function legacyInit() {
     }
 
     // ===============================
-    // PASO CRUPIER
+        const cr = _mjEl("mjDesc");
+    const sup = _mjEl("mjSupervisor");
+
     // ===============================
-    if (_mjPaso === "cr") {
-      const crTxt = (_mjEl("mjDesc").value || "").trim().replace(",", ".");
-      const crVal = crTxt === "" ? 0 : Number(crTxt);
+    // PASO SUPERVISOR (1)  — primero
+    // ===============================
+    if (_mjPaso === "sup") {
+      const supTxt = (sup.value || "").trim().replace(",", ".");
+      const supVal = supTxt === "" ? 0 : Number(supTxt);
 
-      const v = dn_validarHoras(crVal, 0, MAX_HORAS_DIA());
-      if (!v.ok) return _mjMostrarMsg(v.msg);
+      const max = MAX_HORAS_DIA();
 
-      _mjTempCr = crVal;
-
-      // ✅ AVISO PREVIO AL PASO SUPERVISOR
-      // Ahora el primer input es DESCUENTO (hs no trabajadas).
-      // Validación: Supervisor + Descuento <= MAX_HORAS_DIA()
-      if ((tipo === "normal" || tipo === "libreTrabajado")) {
-        const max = MAX_HORAS_DIA();
-        const desc = crVal; // (input mjDesc == descuento)
-        const fmt = (n) => {
-          const s = Number(n).toFixed(1);
-          return s.endsWith(".0") ? s.slice(0, -2) : s;
-        };
-
-        if (desc > 0) {
-          const supMax = Math.max(0, max - desc);
-          _mjMostrarMsg(
-            `Aviso: Con descuento ${fmt(desc)} hs, el máximo de Supervisor para este día es ${fmt(supMax)} hs.`
-          );
-        } else {
-          _mjMostrarMsg("");
-        }
-      } else {
-        _mjMostrarMsg("");
+      // Validación básica (solo SUP)
+      const vSup = dn_validarHoras(0, supVal, max);
+      if (!vSup.ok) {
+        _mjMostrarMsg(vSup.msg);
+        return;
       }
-setPaso("sup");
+
+      // ⚠️ Categoría S (solo supervisor): se mantiene el comportamiento actual por ahora
+      if (ES_SOLO_SUP()) {
+        j.crupier = 0;
+        j.supervisor = supVal;
+
+        guardarJornadas();
+        cerrarModalJornada();
+        renderCalendar();
+        return;
+      }
+
+      // Si SUP completa la jornada: termina acá (no pedir descuento)
+      if (supVal >= max) {
+        j.crupier = 0;
+        j.supervisor = max;
+
+        guardarJornadas();
+        cerrarModalJornada();
+        renderCalendar();
+        return;
+      }
+
+      // SUP parcial: pasar a DESCUENTO
+      _mjTempSup = supVal;
+
+      // Default del descuento: saldo restante (BASE - SUP)
+      const descDefault = Math.max(0, max - supVal);
+      cr.value = String(descDefault);
+
+      // Limpiar mensaje
+      _mjMostrarMsg("");
+
+      setPaso("desc");
       return;
     }
 
     // ===============================
-    // PASO SUPERVISOR
+    // PASO DESCUENTO (2) — condicional
     // ===============================
-    const supTxt = (_mjEl("mjSupervisor").value || "").trim().replace(",", ".");
-    const supVal = supTxt === "" ? 0 : Number(supTxt);
+    const descTxt = (cr.value || "").trim().replace(",", ".");
+    const descVal = descTxt === "" ? 0 : Number(descTxt);
 
-    const v2 = dn_validarHoras(_mjTempCr, supVal, MAX_HORAS_DIA());
-    if (!v2.ok) return _mjMostrarMsg(v2.msg);
-
-    // Normal / Libre trabajado: no puede ser "no trabajó" (descuento completo)
-  // Con el nuevo modelo: DESCUENTO (input 1) + SUP (input 2) == MAX_HORAS_DIA() implica 0 hs trabajadas.
-  if ((tipo === "normal" || tipo === "libreTrabajado")) {
     const max = MAX_HORAS_DIA();
-    const desc = _mjTempCr;
-    if ((desc + supVal) >= max && supVal === 0) {
-      return _mjMostrarMsg(
-        `Con descuento ${max} hs no queda trabajo registrado. Si no trabajaste, cambiá el tipo de día.`
-      );
+    const supVal = Number(_mjTempSup) || 0;
+
+    // Validación (SUP + DESC <= MAX)
+    const v = dn_validarHoras(descVal, supVal, max);
+    if (!v.ok) {
+      _mjMostrarMsg(v.msg);
+      return;
     }
-  }
-// ===============================
+
+    // Normal / Libre trabajado: no puede ser 0 horas trabajadas (descuento completo)
+    if ((tipo === "normal" || tipo === "libreTrabajado") && descVal >= max) {
+      _mjMostrarMsg(
+        "No podés marcar Normal/Libre trabajado si no trabajó horas (descuento completo)."
+      );
+      return;
+    }
+
+    const crCalc = Math.max(0, max - supVal - descVal);
+
+    // ===============================
     // Regla DÍA VACÍO (normal 8/0)
     // ===============================
     const defCS = DIA_DEFAULT();
-    // Día vacío: normal con horas default (ej: 8/0) => no guardamos registro
-    if (tipo === "normal" && j.crupier === defCS.cr && supVal === defCS.sup) {
-      removeJornadaAtIndex(_mjIndexActual);
+    if (tipo === "normal" && crCalc === defCS.cr && supVal === defCS.sup) {
+      // si queda igual al default (ej: 8/0), no guardamos registro
+      jornadas.splice(_mjIndexActual, 1);
       guardarJornadas();
       cerrarModalJornada();
       renderCalendar();
@@ -1922,16 +1952,9 @@ setPaso("sup");
     }
 
     // ===============================
-    // Guardar jornada
-    // Modelo REAL: BASE = CR + SUP + DESC
-    // - Input 1 (mjDesc) = DESC
-    // - Input 2 (mjSupervisor) = SUP
-    // - CR se deriva: CR = BASE - SUP - DESC
+    // Guardar jornada (modelo REAL)
+    // BASE = CR + SUP + DESC
     // ===============================
-    const max = MAX_HORAS_DIA();
-    const descVal = Number(_mjTempCr) || 0; // _mjTempCr guarda DESC en el flujo actual
-    const crCalc = Math.max(0, max - supVal - descVal);
-
     j.crupier = crCalc;
     j.supervisor = supVal;
 
