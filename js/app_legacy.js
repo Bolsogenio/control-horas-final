@@ -895,10 +895,23 @@ function activarPersona(personaId, opts = {}) {
 }
 
 
-// Exponer para test manual (sin UI por ahora)
-window.setPersonaActiva = (id) => activarPersona(id, { render: true, persistir: true });
-window.getPersonaActiva = () => personaActivaId;
-window.getPersonas = () => Object.keys(personas || {});
+// API interna requerida por el legacy/UI
+function getPersonas() {
+  return Object.keys(personas || {});
+}
+
+function getPersonaActiva() {
+  return personaActivaId;
+}
+
+function setPersonaActiva(id) {
+  activarPersona(id, { render: true, persistir: true });
+}
+
+// Compat: exponer para test manual (si lo querés usar desde consola)
+window.setPersonaActiva = setPersonaActiva;
+window.getPersonaActiva = getPersonaActiva;
+window.getPersonas = getPersonas;
 
 // ==========================
 // CREAR PERSONA (sin UI)
@@ -1547,7 +1560,7 @@ function abrirModalJornada(index) {
   if (window._mj_aplicarUIporTipo) {
     window._mj_aplicarUIporTipo();
   } else {
-    _mjAplicarUIporTipo?.();
+    aplicarUIporTipo();
   }
 
   // ✅ Forzar paso inicial coherente (si trabaja -> empezar en Supervisor)
