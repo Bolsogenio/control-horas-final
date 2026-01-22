@@ -475,14 +475,6 @@ let personaActivaId = null;
 let personas = {};
 // Alias usado por toda la app (NO cambiar el resto del código)
 let jornadas = [];
-// DEBUG TEMPORAL: inspección de categorías desde consola (quitar luego)
-window.__DEBUG_listarCategorias = () =>
-  Object.entries(personas).map(([id, p]) => ({
-    id,
-    nombre: p?.nombre,
-    categoria: p?.categoria
-  }));
-
 
 // Índice en memoria (NO se persiste). Clave: "YYYY-MM-DD" (fecha ISO LOCAL normalizada)
 let jornadasByFecha = new Map();
@@ -891,10 +883,6 @@ function activarPersona(personaId, opts = {}) {
   // ✅ Sincronizar categoría activa desde la persona (S o CS)
   CATEGORIA_ACTUAL = (personas[personaId].categoria === "S") ? "S" : "CS";
 
-  // ✅ Logs
-  console.log("[activarPersona] personaActivaId =", personaActivaId);
-  console.log("[activarPersona] categoria persona =", personas[personaId]?.categoria);
-  console.log("[activarPersona] CATEGORIA_ACTUAL =", CATEGORIA_ACTUAL, "ES_SOLO_SUP() =", ES_SOLO_SUP());
 
   // Alias de jornadas para el resto del legacy
   jornadas = Array.isArray(personas[personaId].jornadas) ? personas[personaId].jornadas : [];
@@ -1045,8 +1033,7 @@ function cargarJornadas() {
   // Si migramos, re-guardamos para no repetir conversiones
   if (huboMigracion) {
     guardarJornadas();
-    console.log("Migración OK: fechas normalizadas a ISO (YYYY-MM-DD).");
-  }
+}
 }
 
 
@@ -1095,7 +1082,6 @@ function pedirSupervisorConTope(crupier, valorActual, maxTotal = MAX_HORAS_DIA()
 
 
 function editarJornada(index) {
-  console.log("editarJornada() index =", index);
 
   _mjIndexActual = index;
 
@@ -1186,7 +1172,6 @@ function editarJornada(index) {
   modal.removeAttribute("hidden");
   modal.style.display = "";
 
-  console.log("Modal abierto:", modal.hidden === false);
 }
 
 
