@@ -1,4 +1,4 @@
-import { createRepositories } from "./infra/repository.js";
+﻿import { createRepositories } from "./infra/repository.js";
 import { domRefs } from "./ui/dom.js";
 import { renderPersonaSelect, renderAppState } from "./ui/views.js";
 import { bindPersonaSelect } from "./ui/controllers.js";
@@ -475,6 +475,13 @@ let personaActivaId = null;
 let personas = {};
 // Alias usado por toda la app (NO cambiar el resto del código)
 let jornadas = [];
+// DEBUG TEMPORAL: inspección de categorías desde consola (quitar luego)
+window.__DEBUG_listarCategorias = () =>
+  Object.entries(personas).map(([id, p]) => ({
+    id,
+    nombre: p?.nombre,
+    categoria: p?.categoria
+  }));
 
 
 // Índice en memoria (NO se persiste). Clave: "YYYY-MM-DD" (fecha ISO LOCAL normalizada)
@@ -705,14 +712,19 @@ function renderByAppState() {
   // En NO_PERSONAS, dejamos el selector vacío (si existe) y sin interacción.
   if (sel) sel.innerHTML = "";
 }
-// Categoría activa de la persona (CS = Crupier/Supervisor, S = solo Supervisor)
-let CATEGORIA_ACTUAL = "CS";
-const ES_SOLO_SUP = () => CATEGORIA_ACTUAL === "S";
+let CATEGORIA_ACTUAL = "CS"; // lo dejamos para no romper otras referencias si existen
+
+// ✅ Fuente de verdad: la persona activa
+const ES_SOLO_SUP = () => {
+  if (!personaActivaId) return false;
+  const p = personas[personaActivaId];
+  return !!p && p.categoria === "S";
+};
+
 const DIA_DEFAULT = () => (ES_SOLO_SUP()
   ? { cr: 0, sup: MAX_HORAS_DIA() }
   : { cr: MAX_HORAS_DIA(), sup: 0 }
 );
-
 
 
 
@@ -866,13 +878,8 @@ function perfilDesdePersona(p) {
   };
 }
 
-
-
 function activarPersona(personaId, opts = {}) {
-  const {
-    render = true,
-    persistir = true,
-  } = opts;
+  const { render = true, persistir = true } = opts;
 
   if (!personas || !personas[personaId]) {
     console.warn("activarPersona: persona inexistente", personaId);
@@ -881,26 +888,23 @@ function activarPersona(personaId, opts = {}) {
 
   personaActivaId = personaId;
 
-  // 1) Jornadas SIEMPRE desde la persona activa
-  jornadas = Array.isArray(personas[personaId].jornadas)
-    ? personas[personaId].jornadas
-    : [];
+  // ✅ Sincronizar categoría activa desde la persona (S o CS)
+  CATEGORIA_ACTUAL = (personas[personaId].categoria === "S") ? "S" : "CS";
 
-  // 2) Reconstruir índice SIEMPRE (fuente única de verdad)
+  // ✅ Logs
+  console.log("[activarPersona] personaActivaId =", personaActivaId);
+  console.log("[activarPersona] categoria persona =", personas[personaId]?.categoria);
+  console.log("[activarPersona] CATEGORIA_ACTUAL =", CATEGORIA_ACTUAL, "ES_SOLO_SUP() =", ES_SOLO_SUP());
+
+  // Alias de jornadas para el resto del legacy
+  jornadas = Array.isArray(personas[personaId].jornadas) ? personas[personaId].jornadas : [];
+
+  // Reconstruir índice
   rebuildJornadasIndex();
 
-  // 3) Persistir estado si corresponde
-  if (persistir) {
-    guardarPersonas();
-  }
-
-  // 4) Render controlado
-  if (render) {
-    renderByAppState();
-  }
+  if (persistir) guardarPersonas();
+  if (render) renderByAppState();
 }
-
-
 
 
 // Exponer para test manual (sin UI por ahora)
@@ -1230,8 +1234,6 @@ function _mjLabelDeInput(inputId) {
   return inp ? inp.closest("label") : null;
 }
 
-
-
 function _mjSetPaso(paso) {
   _mjPaso = paso;
 
@@ -1239,10 +1241,15 @@ function _mjSetPaso(paso) {
   const lblSup = _mjLabelDeInput("mjSupervisor");
   const btnOk = _mjEl("mjOk");
 
+  const soloSup = ES_SOLO_SUP();
+
   if (paso === "sup") {
     if (lblSup) lblSup.hidden = false;
     if (lblDesc) lblDesc.hidden = true;
-    if (btnOk) btnOk.textContent = "Continuar";
+
+    // ✅ En Supervisor permanente no hay paso 2: se guarda desde sup
+    if (btnOk) btnOk.textContent = soloSup ? "Guardar" : "Continuar";
+
     setTimeout(() => {
       const inp = _mjEl("mjSupervisor");
       if (inp) { inp.focus(); inp.select(); }
@@ -1259,9 +1266,6 @@ function _mjSetPaso(paso) {
     if (inp) { inp.focus(); inp.select(); }
   }, 0);
 }
-
-
-
 
 
 
@@ -1407,8 +1411,6 @@ function _mjActualizarLeyendas() {
 }
 
 
-
-
 const aplicarUIporTipo = () => {
   const tipo = _mjGetTipo();
   const descInp = _mjEl("mjDesc");
@@ -1442,18 +1444,20 @@ const aplicarUIporTipo = () => {
   }
 
   // Tipos con horas: SIEMPRE arrancar pidiendo Supervisor (Paso 1)
+  // ✅ En Supervisor permanente: NO hay paso 2, el botón debe decir "Guardar"
+  const soloSup = ES_SOLO_SUP();
 
   // Si venimos de un tipo sin horas y pasamos a Normal/Libre trabajado, forzamos un arranque determinista
   if ((tipo === "normal" || tipo === "libreTrabajado") && _mjTipoPrev && _mjTipoPrev !== tipo) {
     if (supInp) supInp.value = "0";
-    if (descInp) descInp.value = "0"; // queda oculto hasta el paso 2
+    if (descInp) descInp.value = "0"; // queda oculto hasta el paso 2 (CS)
   }
 
   if (lblSup) lblSup.hidden = false;
   if (lblDesc) lblDesc.hidden = true;
 
   _mjPaso = "sup";
-  if (btnOk) btnOk.textContent = "Continuar";
+  if (btnOk) btnOk.textContent = soloSup ? "Guardar" : "Continuar";
 
   setTimeout(() => {
     if (supInp) { supInp.focus(); supInp.select(); }
@@ -1461,6 +1465,9 @@ const aplicarUIporTipo = () => {
 
   _mjTipoPrev = tipo;
 };
+
+
+
 
 function _mjLeerHoras() {
   const crTxt = (_mjEl("mjDesc").value || "").trim().replace(",", ".");
@@ -2001,7 +2008,10 @@ function bindPersonaSetup() {
     const nombre = (document.getElementById("psNombre")?.value || "").trim();
     if (!nombre) { setMsg("Ingresá un nombre."); return; }
 
-    const categoria = document.getElementById("psCategoria")?.value || "cs";
+    // ✅ Normalizar categoría del select (acepta "s", "S", "cs", "CS", etc.)
+    const rawCat = document.getElementById("psCategoria")?.value || "cs";
+    const categoria = (String(rawCat).trim().toUpperCase() === "S") ? "S" : "CS";
+
     const horasPorDia = clamp(document.getElementById("psHoras")?.value, 0.5, 9, 8);
     const libresPorQuincena = clamp(document.getElementById("psLibres")?.value, 3, 12, 3);
 
@@ -2016,19 +2026,12 @@ function bindPersonaSetup() {
   const btnCancel = document.getElementById("psCancelarBtn");
   if (btnCancel) {
     btnCancel.addEventListener("click", () => {
-      // Solo UI: cerrar el formulario y volver a la pantalla anterior
       setMsg("");
       psMostrarSetup(false);
-
-      // Si ya hay personas, volvemos a READY y re-renderizamos
-      const ids = Object.keys(personas || {});
-      if (ids.length > 0) {
-        setAppState(APP_STATES.READY);
-        renderByAppState();
-      }
+      setAppState(decideInitialState());
+      renderByAppState();
     });
   }
-
 }
 
 
