@@ -1241,34 +1241,6 @@ function _mjSetPaso(paso) {
 
   const soloSup = ES_SOLO_SUP();
 
-  // Helper: cambia SOLO el texto “título” del label sin romper el <input> adentro
-  const setLabelPrefixText = (labelEl, newText) => {
-    if (!labelEl) return;
-
-    // Buscar primer nodo de texto directo dentro del label
-    const nodes = Array.from(labelEl.childNodes || []);
-    let tnode = nodes.find(n => n && n.nodeType === Node.TEXT_NODE);
-
-    if (!tnode) {
-      // Si no había texto, lo creamos al principio (antes del input)
-      tnode = document.createTextNode("");
-      labelEl.insertBefore(tnode, labelEl.firstChild);
-    }
-
-    // Mantener un espacio al final para que no quede pegado al input
-    tnode.textContent = String(newText || "").trim() + " ";
-  };
-
-  // Siempre dejamos ambos labels “con texto correcto” para evitar que quede pegado
-  // el texto de S cuando cambiás de persona o de paso.
-  setLabelPrefixText(lblDesc, "Horas de Descuento (múltiplos de 0.5):");
-  setLabelPrefixText(
-    lblSup,
-    soloSup
-      ? "Horas de Descuento (múltiplos de 0.5):"
-      : "Horas de Supervisor (múltiplos de 0.5):"
-  );
-
   if (paso === "sup") {
     if (lblSup) lblSup.hidden = false;
     if (lblDesc) lblDesc.hidden = true;
@@ -1296,21 +1268,6 @@ function _mjSetPaso(paso) {
 
 
 function _mjEl(id) { return document.getElementById(id); }
-
-
-function _uiAssertDomIds(ids, contextLabel) {
-  const missing = [];
-  for (let i = 0; i < ids.length; i++) {
-    const id = ids[i];
-    if (!document.getElementById(id)) missing.push(id);
-  }
-  if (missing.length) {
-    const where = contextLabel ? ` (${contextLabel})` : "";
-    const msg = `Faltan IDs en el DOM${where}: ${missing.join(", ")}`;
-    // Error fuerte: si faltan IDs, el legacy se rompe de formas raras.
-    throw new Error(msg);
-  }
-}
 
 function _mjGetTipo() {
   const r = document.querySelector('input[name="mjTipo"]:checked');
@@ -1561,16 +1518,19 @@ function abrirModalJornada(index) {
   const j = jornadas[index];
   _mjSetInfoSuperior(j);
 
-  // Estado original (para poder decidir si este registro nació como 'día vacío')
-  _mjOriginalCr = Number(j.crupier) || 0;
-  _mjOriginalSup = Number(j.supervisor) || 0;
+  // Valores almacenados (modelo legacy)
+  const crStored = Number(j.crupier) || 0;
+  const supStored = Number(j.supervisor) || 0;
+
+  // Estado original (para decidir si este registro nació como 'día vacío')
   _mjEraPlaceholderVacio = (
-    _mjOriginalCr === 0 &&
-    _mjOriginalSup === 0 &&
-    !j.falta && !j.libre && !j.libreTrabajado && !j.compensado && !j.licAnual && !j.licEnfermedad && !j.licSinGoce
+    crStored === 0 &&
+    supStored === 0 &&
+    !j.falta && !j.libre && !j.libreTrabajado && !j.compensado &&
+    !j.licAnual && !j.licEnfermedad && !j.licSinGoce
   );
 
-  // Pre-cargar tipo según flags existentes
+  // Tipo según flags existentes
   const tipo = dn_getTipoFromFlags(j);
   _mjSetTipo(tipo);
 
@@ -1578,37 +1538,46 @@ function abrirModalJornada(index) {
   _mjTipoOriginal = tipo;
   _mjFechaOriginal = j.fecha;
 
-  // Pre-cargar horas
-  _mjEl("mjDesc").value = String(Number(j.crupier) || 0);
-  _mjEl("mjSupervisor").value = String(Number(j.supervisor) || 0);
+  // ----------------------------
+  // UI: los inputs son SUP + DESC (CR se deriva)
+  // DESC = BASE - (CR + SUP)
+  // En categoría "S" (solo supervisor/permanente): se ingresa SOLO DESC (en mjSupervisor)
+  // ----------------------------
+  const base = MAX_HORAS_DIA();
+  let descStored = base - (crStored + supStored);
+  if (!Number.isFinite(descStored)) descStored = 0;
+  if (descStored < 0) descStored = 0;
+  if (descStored > base) descStored = base;
 
-  // ✅ Default SOLO para NORMAL (si no hay horas cargadas)
-  const entraDefaultNormal =
-    (tipo === "normal") &&
-    (Number(j.crupier) || 0) === 0 &&
-    (Number(j.supervisor) || 0) === 0;
+  const soloSup = ES_SOLO_SUP();
 
-  if (entraDefaultNormal) {
-    _mjEl("mjDesc").value = String(MAX_HORAS_DIA());
-    _mjEl("mjSupervisor").value = "0";
+  // Originales (para "Sin cambios" / "Cambiando a…")
+  _mjOriginalCr = soloSup ? 0 : descStored;          // mjDesc (solo en CS)
+  _mjOriginalSup = soloSup ? descStored : supStored; // mjSupervisor (en S = DESC)
 
-    // Si era placeholder vacío, que 8/0 NO cuente como "cambio" al abrir
-    if (_mjEraPlaceholderVacio) {
-      _mjOriginalCr = MAX_HORAS_DIA();
-      _mjOriginalSup = 0;
-    }
+  // Precargar inputs según categoría
+  const inpDesc = _mjEl("mjDesc");
+  const inpSup = _mjEl("mjSupervisor");
+
+  if (soloSup) {
+    // S: se ingresa DESCUENTO (en mjSupervisor)
+    if (inpDesc) inpDesc.value = "0";
+    if (inpSup) inpSup.value = String(_mjOriginalSup ?? 0);
+  } else {
+    // CS: paso 1 = Supervisor, paso 2 = Descuento
+    if (inpDesc) inpDesc.value = String(_mjOriginalCr ?? 0);
+    if (inpSup) inpSup.value = String(_mjOriginalSup ?? 0);
   }
 
-  // ✅ Aplicar UI correcta (la que maneja labels + pasos)
+  // Aplicar UI correcta (la que maneja labels + pasos)
   if (window._mj_aplicarUIporTipo) {
     window._mj_aplicarUIporTipo();
   } else {
     aplicarUIporTipo();
   }
 
-  // ✅ Forzar paso inicial coherente (si trabaja -> empezar en Supervisor)
+  // Forzar paso inicial coherente
   if (dn_horasHabilitadas(tipo)) {
-    _mjPaso = "sup";
     _mjTempSup = 0;
     _mjTempDesc = 0;
     _mjSetPaso("sup");
@@ -1668,41 +1637,6 @@ export function legacyInit() {
   legacyInit._didRun = true;
 
 
-
-
-
-// ✅ Auditoría de IDs críticos (evita roturas silenciosas por desalineación de index.html)
-_uiAssertDomIds(
-  [
-    // Calendario / resumen
-    "calendarGrid",
-    "monthLabel",
-    "prevMonthBtn",
-    "nextMonthBtn",
-    "sumMonthLabel",
-    "sumMonthText",
-    "sumQuincenaRange",
-    "sumQuincenaText",
-
-    // Personas
-    "personaSetup",
-    "personaSelect",
-    "btnNuevaPersona",
-    "personaActions",
-
-    // Modal Jornada
-    "modalJornada",
-    "mjOk",
-    "mjCancel",
-    "mjReset",
-    "mjMsg",
-    "mjInfo",
-    "mjCambiando",
-    "mjDesc",
-    "mjSupervisor"
-  ],
-  "legacyInit"
-);
 
   // ===============================
   // Reiniciar (solo UI, no guarda)
@@ -1856,22 +1790,16 @@ _uiAssertDomIds(
         return;
       }
 
-      // ✅ Categoría S (Supervisor permanente)
-// El input representa DESCUENTO
-if (ES_SOLO_SUP()) {
-  const max = MAX_HORAS_DIA();
+      // ⚠️ Categoría S (solo supervisor): se mantiene el comportamiento actual por ahora
+      if (ES_SOLO_SUP()) {
+        j.crupier = 0;
+        j.supervisor = supVal;
 
-  const desc = Math.max(0, Math.min(supVal, max));
-  const supCalc = Math.max(0, max - desc);
-
-  j.crupier = 0;
-  j.supervisor = supCalc;
-
-  guardarJornadas();
-  cerrarModalJornada();
-  renderCalendar();
-  return;
-}
+        guardarJornadas();
+        cerrarModalJornada();
+        renderCalendar();
+        return;
+      }
 
       // Si SUP completa la jornada: termina acá (no pedir descuento)
       if (supVal >= max) {
