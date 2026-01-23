@@ -1232,7 +1232,6 @@ function _mjLabelDeInput(inputId) {
   return inp ? inp.closest("label") : null;
 }
 
-
 function _mjSetPaso(paso) {
   _mjPaso = paso;
 
@@ -1295,7 +1294,23 @@ function _mjSetPaso(paso) {
 }
 
 
+
 function _mjEl(id) { return document.getElementById(id); }
+
+
+function _uiAssertDomIds(ids, contextLabel) {
+  const missing = [];
+  for (let i = 0; i < ids.length; i++) {
+    const id = ids[i];
+    if (!document.getElementById(id)) missing.push(id);
+  }
+  if (missing.length) {
+    const where = contextLabel ? ` (${contextLabel})` : "";
+    const msg = `Faltan IDs en el DOM${where}: ${missing.join(", ")}`;
+    // Error fuerte: si faltan IDs, el legacy se rompe de formas raras.
+    throw new Error(msg);
+  }
+}
 
 function _mjGetTipo() {
   const r = document.querySelector('input[name="mjTipo"]:checked');
@@ -1654,6 +1669,41 @@ export function legacyInit() {
 
 
 
+
+
+// ✅ Auditoría de IDs críticos (evita roturas silenciosas por desalineación de index.html)
+_uiAssertDomIds(
+  [
+    // Calendario / resumen
+    "calendarGrid",
+    "monthLabel",
+    "prevMonthBtn",
+    "nextMonthBtn",
+    "sumMonthLabel",
+    "sumMonthText",
+    "sumQuincenaRange",
+    "sumQuincenaText",
+
+    // Personas
+    "personaSetup",
+    "personaSelect",
+    "btnNuevaPersona",
+    "personaActions",
+
+    // Modal Jornada
+    "modalJornada",
+    "mjOk",
+    "mjCancel",
+    "mjReset",
+    "mjMsg",
+    "mjInfo",
+    "mjCambiando",
+    "mjDesc",
+    "mjSupervisor"
+  ],
+  "legacyInit"
+);
+
   // ===============================
   // Reiniciar (solo UI, no guarda)
   // ===============================
@@ -1806,8 +1856,7 @@ export function legacyInit() {
         return;
       }
 
-      // ⚠️ Categoría S (solo supervisor): se mantiene el comportamiento actual por ahora
-// ✅ Categoría S (Supervisor permanente)
+      // ✅ Categoría S (Supervisor permanente)
 // El input representa DESCUENTO
 if (ES_SOLO_SUP()) {
   const max = MAX_HORAS_DIA();
