@@ -1232,6 +1232,7 @@ function _mjLabelDeInput(inputId) {
   return inp ? inp.closest("label") : null;
 }
 
+
 function _mjSetPaso(paso) {
   _mjPaso = paso;
 
@@ -1240,6 +1241,34 @@ function _mjSetPaso(paso) {
   const btnOk = _mjEl("mjOk");
 
   const soloSup = ES_SOLO_SUP();
+
+  // Helper: cambia SOLO el texto “título” del label sin romper el <input> adentro
+  const setLabelPrefixText = (labelEl, newText) => {
+    if (!labelEl) return;
+
+    // Buscar primer nodo de texto directo dentro del label
+    const nodes = Array.from(labelEl.childNodes || []);
+    let tnode = nodes.find(n => n && n.nodeType === Node.TEXT_NODE);
+
+    if (!tnode) {
+      // Si no había texto, lo creamos al principio (antes del input)
+      tnode = document.createTextNode("");
+      labelEl.insertBefore(tnode, labelEl.firstChild);
+    }
+
+    // Mantener un espacio al final para que no quede pegado al input
+    tnode.textContent = String(newText || "").trim() + " ";
+  };
+
+  // Siempre dejamos ambos labels “con texto correcto” para evitar que quede pegado
+  // el texto de S cuando cambiás de persona o de paso.
+  setLabelPrefixText(lblDesc, "Horas de Descuento (múltiplos de 0.5):");
+  setLabelPrefixText(
+    lblSup,
+    soloSup
+      ? "Horas de Descuento (múltiplos de 0.5):"
+      : "Horas de Supervisor (múltiplos de 0.5):"
+  );
 
   if (paso === "sup") {
     if (lblSup) lblSup.hidden = false;
@@ -1264,7 +1293,6 @@ function _mjSetPaso(paso) {
     if (inp) { inp.focus(); inp.select(); }
   }, 0);
 }
-
 
 
 function _mjEl(id) { return document.getElementById(id); }
@@ -1779,15 +1807,22 @@ export function legacyInit() {
       }
 
       // ⚠️ Categoría S (solo supervisor): se mantiene el comportamiento actual por ahora
-      if (ES_SOLO_SUP()) {
-        j.crupier = 0;
-        j.supervisor = supVal;
+// ✅ Categoría S (Supervisor permanente)
+// El input representa DESCUENTO
+if (ES_SOLO_SUP()) {
+  const max = MAX_HORAS_DIA();
 
-        guardarJornadas();
-        cerrarModalJornada();
-        renderCalendar();
-        return;
-      }
+  const desc = Math.max(0, Math.min(supVal, max));
+  const supCalc = Math.max(0, max - desc);
+
+  j.crupier = 0;
+  j.supervisor = supCalc;
+
+  guardarJornadas();
+  cerrarModalJornada();
+  renderCalendar();
+  return;
+}
 
       // Si SUP completa la jornada: termina acá (no pedir descuento)
       if (supVal >= max) {
