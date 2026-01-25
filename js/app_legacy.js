@@ -2255,9 +2255,6 @@ function syncPersonaActionsUI() {
       elCat.textContent = "";
     }
   }
-
-
-
 }
 
 
