@@ -222,37 +222,85 @@ function bindCalendarNav() {
 
 
 function renderResumen() {
-  const formatearDiasHoras = (h) => dn_formatearDiasHoras8(h, MAX_HORAS_DIA());
+  const soloSup = ES_SOLO_SUP();
+  const maxDia = MAX_HORAS_DIA();
+
+  const tipoOf = (j) => dn_getTipoFromFlags(j);
+
+  const descuentoDeJornada = (j) => {
+    if (!j) return 0;
+    const tipo = tipoOf(j);
+
+    // Tipos que descuentan un día completo
+    if (tipo === "falta" || tipo === "licSinGoce") return maxDia;
+
+    // Tipos donde descuenta "lo que falta" para completar el tope del día
+    // (Normal / Libre trabajado / Compensado usan horas reales)
+    if (tipo === "normal" || tipo === "libreTrabajado" || tipo === "compensado") {
+      const cr = Number(j.crupier || 0);
+      const sup = Number(j.supervisor || 0);
+      const total = cr + sup;
+      const falta = maxDia - total;
+      return (Number.isFinite(falta) && falta > 0) ? falta : 0;
+    }
+
+    // Libre / Licencias pagas (anual/enfermedad): no descuentan
+    return 0;
+  };
+
+  const sumaSupervisor = (arr) => {
+    if (soloSup) return 0; // En solo supervisor no mostramos Super separado
+    let s = 0;
+    for (const j of arr) {
+      if (!j) continue;
+      const tipo = tipoOf(j);
+      if (tipo === "normal" || tipo === "libreTrabajado" || tipo === "compensado") {
+        s += Number(j.supervisor || 0);
+      }
+    }
+    return s;
+  };
+
+  const filtrarPorRangoISO = (isoStart, isoEnd) => {
+    return jornadas.filter(j => {
+      if (!j || !j.fecha) return false;
+      const iso = dn_normalizarFecha(j.fecha);
+      return !!iso && iso >= isoStart && iso <= isoEnd;
+    });
+  };
 
   // ======================
-  // MES
+  // MES (base fija 240)
   // ======================
-  const mr = dn_calcularResumenMensual(calYear, calMonth, jornadas, MAX_HORAS_DIA(), 30);
-  const mt = mr.mt;
-  const baseMesHastaHoy = mr.baseMesHastaHoy;
-  const totalPagoM = mr.totalPagoM;
-  const descuentoM = mr.descuentoM;
-  const extraM = mr.extraM;
-  const crupierHorasM = mr.crupierHorasM;
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay = new Date(calYear, calMonth + 1, 0);
+  const isoMStart = dn_toISODate(firstDay);
+  const isoMEnd = dn_toISODate(lastDay);
+
+  const jornadasMes = filtrarPorRangoISO(isoMStart, isoMEnd);
+
+  let descuentoM = 0;
+  for (const j of jornadasMes) descuentoM += descuentoDeJornada(j);
+
+  const baseMes = 240;
+  const totalTrabM = baseMes - descuentoM;
+  const supM = sumaSupervisor(jornadasMes);
 
   document.getElementById("sumMonthLabel").textContent = `${MONTHS[calMonth]} ${calYear}`;
 
   document.getElementById("sumMonthText").textContent =
-    `Sup: ${formatearDiasHoras(mt.supervisor)} (${mt.supervisor}h)` +
-    ` | Desc: ${descuentoM}h` +
-    ` | Crup: ${formatearDiasHoras(crupierHorasM)} (${crupierHorasM}h)` +
-    (extraM > 0 ? ` | Extra: ${extraM}h` : "") +
-    ` | Base hasta hoy: ${baseMesHastaHoy}h` +
-    ` | Total pago: ${totalPagoM}h`;
+    `Tot hs trab: ${totalTrabM}h` +
+    (soloSup ? "" : ` | Super: ${supM}h`) +
+    ` | Desc: ${descuentoM}h`;
 
   // ======================
-  // QUINCENAS (rodantes) que tocan el mes visible
+  // QUINCENAS que tocan el mes visible (base 88h; 96h si hay Licencia anual en la quincena)
   // ======================
   const quincenas = dn_calcularResumenQuincenasQueTocanMes(
     calYear,
     calMonth,
     jornadas,
-    MAX_HORAS_DIA(),
+    maxDia,
     11
   );
 
@@ -262,26 +310,35 @@ function renderResumen() {
   const partes = [];
 
   for (const r of quincenas) {
-    const qt = r.qt;
+    const isoQStart = dn_toISODate(r.start);
+    const isoQEnd = dn_toISODate(r.end);
+    const jornadasQ = filtrarPorRangoISO(isoQStart, isoQEnd);
 
-    const descuentoQ = r.descuentoQ;
-    const extraQ = r.extraQ;
-    const crupierHorasQ = r.crupierHorasQ;
+    let hayLicAnual = false;
+    let descuentoQ = 0;
+
+    for (const j of jornadasQ) {
+      const tipo = tipoOf(j);
+      if (tipo === "licAnual") hayLicAnual = true;
+      descuentoQ += descuentoDeJornada(j);
+    }
+
+    const baseQ = hayLicAnual ? 96 : 88;
+    const totalTrabQ = baseQ - descuentoQ;
+    const supQ = sumaSupervisor(jornadasQ);
 
     partes.push(
       `${formatDate(r.start)} → ${formatDate(r.end)}` +
-      ` | Sup: ${formatearDiasHoras(qt.supervisor)} (${qt.supervisor}h)` +
-      ` | Desc: ${descuentoQ}h` +
-      ` | Crup: ${formatearDiasHoras(crupierHorasQ)} (${crupierHorasQ}h)` +
-      (extraQ > 0 ? ` | Extra: ${extraQ}h` : "")
+      ` | Tot hs trab: ${totalTrabQ}h` +
+      (soloSup ? "" : ` | Super: ${supQ}h`) +
+      ` | Desc: ${descuentoQ}h`
     );
   }
 
-  const saldoGlobal = dn_calcularSaldoLibresTrabajadosGlobal(jornadas);
-  partes.push(`Saldo de libres trabajados disponible: ${saldoGlobal.saldo}`);
-
   document.getElementById("sumQuincenaText").textContent = partes.join(" // ");
 }
+
+
 
 function renderCalendarGrid() {
   const grid = document.getElementById("calendarGrid");
@@ -884,9 +941,6 @@ function activarPersona(personaId, opts = {}) {
   CATEGORIA_ACTUAL = (personas[personaId].categoria === "S") ? "S" : "CS";
 
 
-
-  // ✅ Sincronizar perfil activo (para MAX_HORAS_DIA, libres, etc.)
-  PERFIL_ACTUAL = (personas[personaId] && personas[personaId].perfil) ? personas[personaId].perfil : null;
   // Alias de jornadas para el resto del legacy
   jornadas = Array.isArray(personas[personaId].jornadas) ? personas[personaId].jornadas : [];
 
