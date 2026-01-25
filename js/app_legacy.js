@@ -1241,6 +1241,30 @@ function _mjSetPaso(paso) {
 
   const soloSup = ES_SOLO_SUP();
 
+  // Helper: cambia SOLO el texto “título” del label sin romper el <input> adentro
+  const setLabelPrefixText = (labelEl, newText) => {
+    if (!labelEl) return;
+
+    const nodes = Array.from(labelEl.childNodes || []);
+    let tnode = nodes.find(n => n && n.nodeType === Node.TEXT_NODE);
+
+    if (!tnode) {
+      tnode = document.createTextNode("");
+      labelEl.insertBefore(tnode, labelEl.firstChild);
+    }
+
+    tnode.textContent = String(newText || "").trim() + " ";
+  };
+
+  // Mantener textos coherentes SIEMPRE (evita “texto pegado” al cambiar de persona/paso)
+  setLabelPrefixText(lblDesc, "Horas de Descuento (múltiplos de 0.5):");
+  setLabelPrefixText(
+    lblSup,
+    soloSup
+      ? "Horas de Descuento (múltiplos de 0.5):"
+      : "Horas de Supervisor (múltiplos de 0.5):"
+  );
+
   if (paso === "sup") {
     if (lblSup) lblSup.hidden = false;
     if (lblDesc) lblDesc.hidden = true;
@@ -1264,6 +1288,7 @@ function _mjSetPaso(paso) {
     if (inp) { inp.focus(); inp.select(); }
   }, 0);
 }
+
 
 
 
@@ -1518,19 +1543,16 @@ function abrirModalJornada(index) {
   const j = jornadas[index];
   _mjSetInfoSuperior(j);
 
-  // Valores almacenados (modelo legacy)
-  const crStored = Number(j.crupier) || 0;
-  const supStored = Number(j.supervisor) || 0;
-
-  // Estado original (para decidir si este registro nació como 'día vacío')
+  // Estado original (para poder decidir si este registro nació como 'día vacío')
+  _mjOriginalCr = Number(j.crupier) || 0;
+  _mjOriginalSup = Number(j.supervisor) || 0;
   _mjEraPlaceholderVacio = (
-    crStored === 0 &&
-    supStored === 0 &&
-    !j.falta && !j.libre && !j.libreTrabajado && !j.compensado &&
-    !j.licAnual && !j.licEnfermedad && !j.licSinGoce
+    _mjOriginalCr === 0 &&
+    _mjOriginalSup === 0 &&
+    !j.falta && !j.libre && !j.libreTrabajado && !j.compensado && !j.licAnual && !j.licEnfermedad && !j.licSinGoce
   );
 
-  // Tipo según flags existentes
+  // Pre-cargar tipo según flags existentes
   const tipo = dn_getTipoFromFlags(j);
   _mjSetTipo(tipo);
 
@@ -1538,46 +1560,37 @@ function abrirModalJornada(index) {
   _mjTipoOriginal = tipo;
   _mjFechaOriginal = j.fecha;
 
-  // ----------------------------
-  // UI: los inputs son SUP + DESC (CR se deriva)
-  // DESC = BASE - (CR + SUP)
-  // En categoría "S" (solo supervisor/permanente): se ingresa SOLO DESC (en mjSupervisor)
-  // ----------------------------
-  const base = MAX_HORAS_DIA();
-  let descStored = base - (crStored + supStored);
-  if (!Number.isFinite(descStored)) descStored = 0;
-  if (descStored < 0) descStored = 0;
-  if (descStored > base) descStored = base;
+  // Pre-cargar horas
+  _mjEl("mjDesc").value = String(Number(j.crupier) || 0);
+  _mjEl("mjSupervisor").value = String(Number(j.supervisor) || 0);
 
-  const soloSup = ES_SOLO_SUP();
+  // ✅ Default SOLO para NORMAL (si no hay horas cargadas)
+  const entraDefaultNormal =
+    (tipo === "normal") &&
+    (Number(j.crupier) || 0) === 0 &&
+    (Number(j.supervisor) || 0) === 0;
 
-  // Originales (para "Sin cambios" / "Cambiando a…")
-  _mjOriginalCr = soloSup ? 0 : descStored;          // mjDesc (solo en CS)
-  _mjOriginalSup = soloSup ? descStored : supStored; // mjSupervisor (en S = DESC)
+  if (entraDefaultNormal) {
+    _mjEl("mjDesc").value = String(MAX_HORAS_DIA());
+    _mjEl("mjSupervisor").value = "0";
 
-  // Precargar inputs según categoría
-  const inpDesc = _mjEl("mjDesc");
-  const inpSup = _mjEl("mjSupervisor");
-
-  if (soloSup) {
-    // S: se ingresa DESCUENTO (en mjSupervisor)
-    if (inpDesc) inpDesc.value = "0";
-    if (inpSup) inpSup.value = String(_mjOriginalSup ?? 0);
-  } else {
-    // CS: paso 1 = Supervisor, paso 2 = Descuento
-    if (inpDesc) inpDesc.value = String(_mjOriginalCr ?? 0);
-    if (inpSup) inpSup.value = String(_mjOriginalSup ?? 0);
+    // Si era placeholder vacío, que 8/0 NO cuente como "cambio" al abrir
+    if (_mjEraPlaceholderVacio) {
+      _mjOriginalCr = MAX_HORAS_DIA();
+      _mjOriginalSup = 0;
+    }
   }
 
-  // Aplicar UI correcta (la que maneja labels + pasos)
+  // ✅ Aplicar UI correcta (la que maneja labels + pasos)
   if (window._mj_aplicarUIporTipo) {
     window._mj_aplicarUIporTipo();
   } else {
     aplicarUIporTipo();
   }
 
-  // Forzar paso inicial coherente
+  // ✅ Forzar paso inicial coherente (si trabaja -> empezar en Supervisor)
   if (dn_horasHabilitadas(tipo)) {
+    _mjPaso = "sup";
     _mjTempSup = 0;
     _mjTempDesc = 0;
     _mjSetPaso("sup");
@@ -1790,16 +1803,21 @@ export function legacyInit() {
         return;
       }
 
-      // ⚠️ Categoría S (solo supervisor): se mantiene el comportamiento actual por ahora
-      if (ES_SOLO_SUP()) {
-        j.crupier = 0;
-        j.supervisor = supVal;
+      // ✅ Categoría S (Supervisor permanente)
+// En este flujo, el input visible (mjSupervisor) representa DESCUENTO.
+// La lógica de guardado NO cambia: CR=0 y SUP se deriva como (BASE - DESC).
+if (ES_SOLO_SUP()) {
+  const descVal = supVal;
+  const supCalc = Math.max(0, max - descVal);
 
-        guardarJornadas();
-        cerrarModalJornada();
-        renderCalendar();
-        return;
-      }
+  j.crupier = 0;
+  j.supervisor = supCalc;
+
+  guardarJornadas();
+  cerrarModalJornada();
+  renderCalendar();
+  return;
+}
 
       // Si SUP completa la jornada: termina acá (no pedir descuento)
       if (supVal >= max) {
