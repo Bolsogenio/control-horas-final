@@ -1241,30 +1241,6 @@ function _mjSetPaso(paso) {
 
   const soloSup = ES_SOLO_SUP();
 
-  // Helper: cambia SOLO el texto “título” del label sin romper el <input> adentro
-  const setLabelPrefixText = (labelEl, newText) => {
-    if (!labelEl) return;
-
-    const nodes = Array.from(labelEl.childNodes || []);
-    let tnode = nodes.find(n => n && n.nodeType === Node.TEXT_NODE);
-
-    if (!tnode) {
-      tnode = document.createTextNode("");
-      labelEl.insertBefore(tnode, labelEl.firstChild);
-    }
-
-    tnode.textContent = String(newText || "").trim() + " ";
-  };
-
-  // Mantener textos coherentes SIEMPRE (evita “texto pegado” al cambiar de persona/paso)
-  setLabelPrefixText(lblDesc, "Horas de Descuento (múltiplos de 0.5):");
-  setLabelPrefixText(
-    lblSup,
-    soloSup
-      ? "Horas de Descuento (múltiplos de 0.5):"
-      : "Horas de Supervisor (múltiplos de 0.5):"
-  );
-
   if (paso === "sup") {
     if (lblSup) lblSup.hidden = false;
     if (lblDesc) lblDesc.hidden = true;
@@ -1288,7 +1264,6 @@ function _mjSetPaso(paso) {
     if (inp) { inp.focus(); inp.select(); }
   }, 0);
 }
-
 
 
 
@@ -1803,21 +1778,16 @@ export function legacyInit() {
         return;
       }
 
-      // ✅ Categoría S (Supervisor permanente)
-// En este flujo, el input visible (mjSupervisor) representa DESCUENTO.
-// La lógica de guardado NO cambia: CR=0 y SUP se deriva como (BASE - DESC).
-if (ES_SOLO_SUP()) {
-  const descVal = supVal;
-  const supCalc = Math.max(0, max - descVal);
+      // ⚠️ Categoría S (solo supervisor): se mantiene el comportamiento actual por ahora
+      if (ES_SOLO_SUP()) {
+        j.crupier = 0;
+        j.supervisor = supVal;
 
-  j.crupier = 0;
-  j.supervisor = supCalc;
-
-  guardarJornadas();
-  cerrarModalJornada();
-  renderCalendar();
-  return;
-}
+        guardarJornadas();
+        cerrarModalJornada();
+        renderCalendar();
+        return;
+      }
 
       // Si SUP completa la jornada: termina acá (no pedir descuento)
       if (supVal >= max) {
@@ -2210,16 +2180,41 @@ function syncPersonaActionsUI() {
   const btnCancel = document.getElementById("btnCancelarBorrarPersona");
   const btnConfirm = document.getElementById("btnConfirmarBorrarPersona");
 
-  // Si falta algo del DOM principal, no rompemos
-  if (!btnBorrar) return;
+  // NUEVO: placeholders del mini-modal (si existen en el HTML)
+  const nombreActivoEl = document.getElementById("personaNombreActivo");
+  const categoriaActivaEl = document.getElementById("personaCategoriaActiva");
 
   const ids = Object.keys(personas || {});
   const hayPersonas = ids.length > 0;
   const activaValida = !!(personaActivaId && personas && personas[personaActivaId]);
 
+  // --- Info persona activa (solo UI, sin lógica de negocio) ---
+  if (nombreActivoEl) {
+    nombreActivoEl.textContent = activaValida
+      ? String(personas[personaActivaId]?.nombre || personaActivaId).trim()
+      : "—";
+  }
+
+  if (categoriaActivaEl) {
+    if (!activaValida) {
+      categoriaActivaEl.textContent = "—";
+    } else {
+      const cat = String(personas[personaActivaId]?.categoria || "CS").toUpperCase();
+      categoriaActivaEl.textContent = (cat === "S")
+        ? "Supervisor permanente"
+        : "Crupier/Supervisor";
+    }
+  }
+
+  // Si el DOM del bloque acciones no existe todavía, no rompemos.
+  // (Pero arriba igual intentamos completar nombre/categoría si están en el HTML)
+  if (!btnBorrar && !btnNueva && !sel && !row && !txt && !btnCancel && !btnConfirm) return;
+
   // Botón borrar: visible solo si hay personas
-  btnBorrar.hidden = !hayPersonas;
-  btnBorrar.disabled = !(hayPersonas && activaValida);
+  if (btnBorrar) {
+    btnBorrar.hidden = !hayPersonas;
+    btnBorrar.disabled = !(hayPersonas && activaValida);
+  }
 
   // Si ya no se puede confirmar (por ejemplo borraste y quedó vacío), cerramos confirmación
   if (_personaDeleteConfirmOpen && !(hayPersonas && activaValida)) {
@@ -2233,13 +2228,12 @@ function syncPersonaActionsUI() {
   }
 
   if (txt) {
-  if (_personaDeleteConfirmOpen) {
-    txt.textContent = "¿Borrar ésta persona y sus jornadas?";
-  } else {
-    txt.textContent = "";
+    if (_personaDeleteConfirmOpen) {
+      txt.textContent = "¿Borrar ésta persona y sus jornadas?";
+    } else {
+      txt.textContent = "";
+    }
   }
-}
-
 
   // Bloquear controles durante confirmación (evita cambios de persona mientras confirmás)
   const lock = _personaDeleteConfirmOpen;
@@ -2250,6 +2244,7 @@ function syncPersonaActionsUI() {
   if (btnNueva) btnNueva.disabled = lock;
   if (sel) sel.disabled = lock || (appState !== APP_STATES.READY);
 }
+
 
 
 
