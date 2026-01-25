@@ -817,9 +817,9 @@ function guardarPersonas(opts = {}) {
     const mergedPersonas = overwrite
       ? { ...(personas && typeof personas === "object" ? personas : {}) }
       : {
-          ...storedPersonas,
-          ...(personas && typeof personas === "object" ? personas : {}),
-        };
+        ...storedPersonas,
+        ...(personas && typeof personas === "object" ? personas : {}),
+      };
 
     // La persona activa siempre guarda SUS jornadas actuales
     if (personaActivaId && mergedPersonas[personaActivaId]) {
@@ -1046,7 +1046,7 @@ function cargarJornadas() {
   // Si migramos, re-guardamos para no repetir conversiones
   if (huboMigracion) {
     guardarJornadas();
-}
+  }
 }
 
 
@@ -1759,7 +1759,7 @@ export function legacyInit() {
     }
 
     // ===============================
-        const cr = _mjEl("mjDesc");
+    const cr = _mjEl("mjDesc");
     const sup = _mjEl("mjSupervisor");
 
     // ===============================
@@ -1937,10 +1937,10 @@ export function legacyInit() {
 
 
 
-// Compat: si algo lo llama desde afuera, lo mantenemos.
-window._psBindCrearPersona = function _psBindCrearPersona() {
-  bindPersonaSetup();
-};
+  // Compat: si algo lo llama desde afuera, lo mantenemos.
+  window._psBindCrearPersona = function _psBindCrearPersona() {
+    bindPersonaSetup();
+  };
 
 
 
@@ -2187,6 +2187,9 @@ function syncPersonaActionsUI() {
   const ids = Object.keys(personas || {});
   const hayPersonas = ids.length > 0;
   const activaValida = !!(personaActivaId && personas && personas[personaActivaId]);
+  const elCat = document.getElementById("personaCategoriaActiva");
+
+
 
   // --- Info persona activa (solo UI, sin lógica de negocio) ---
   if (nombreActivoEl) {
@@ -2243,6 +2246,18 @@ function syncPersonaActionsUI() {
 
   if (btnNueva) btnNueva.disabled = lock;
   if (sel) sel.disabled = lock || (appState !== APP_STATES.READY);
+  // Badge categoría (solo texto corto)
+  if (elCat) {
+    if (activaValida) {
+      const cat = personas[personaActivaId]?.categoria;
+      elCat.textContent = (cat === "S") ? " Super" : "Cr / Sup";
+    } else {
+      elCat.textContent = "";
+    }
+  }
+
+
+
 }
 
 

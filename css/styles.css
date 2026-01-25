@@ -86,6 +86,24 @@
   }
 }
 
+/* Badge categoría persona activa (mini modal) */
+.persona-active-info{
+  display: flex;
+  align-items: center;
+}
+
+#personaCategoriaActiva.pa-categoria{
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: .82rem;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid rgba(0,0,0,.18);
+  background: rgba(0,0,0,.06);
+}
+
+
 /* ===============================
    CALENDARIO MENSUAL
    =============================== */
