@@ -884,6 +884,9 @@ function activarPersona(personaId, opts = {}) {
   CATEGORIA_ACTUAL = (personas[personaId].categoria === "S") ? "S" : "CS";
 
 
+
+  // ✅ Sincronizar perfil activo (para MAX_HORAS_DIA, libres, etc.)
+  PERFIL_ACTUAL = (personas[personaId] && personas[personaId].perfil) ? personas[personaId].perfil : null;
   // Alias de jornadas para el resto del legacy
   jornadas = Array.isArray(personas[personaId].jornadas) ? personas[personaId].jornadas : [];
 
