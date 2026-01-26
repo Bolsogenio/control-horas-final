@@ -220,10 +220,10 @@ function bindCalendarNav() {
 
 
 
-
 function renderResumen() {
   const soloSup = ES_SOLO_SUP();
   const maxDia = MAX_HORAS_DIA();
+  const maxLibresQ = MAX_LIBRES_QUINCENA();
 
   const tipoOf = (j) => dn_getTipoFromFlags(j);
 
@@ -235,7 +235,6 @@ function renderResumen() {
     if (tipo === "falta" || tipo === "licSinGoce") return maxDia;
 
     // Tipos donde descuenta "lo que falta" para completar el tope del día
-    // (Normal / Libre trabajado / Compensado usan horas reales)
     if (tipo === "normal" || tipo === "libreTrabajado" || tipo === "compensado") {
       const cr = Number(j.crupier || 0);
       const sup = Number(j.supervisor || 0);
@@ -244,12 +243,12 @@ function renderResumen() {
       return (Number.isFinite(falta) && falta > 0) ? falta : 0;
     }
 
-    // Libre / Licencias pagas (anual/enfermedad): no descuentan
+    // Libre / Licencias pagas: no descuentan
     return 0;
   };
 
   const sumaSupervisor = (arr) => {
-    if (soloSup) return 0; // En solo supervisor no mostramos Super separado
+    if (soloSup) return 0;
     let s = 0;
     for (const j of arr) {
       if (!j) continue;
@@ -270,7 +269,7 @@ function renderResumen() {
   };
 
   // ======================
-  // MES (base fija 240)
+  // MES (base por perfil: maxDia * 30)
   // ======================
   const firstDay = new Date(calYear, calMonth, 1);
   const lastDay = new Date(calYear, calMonth + 1, 0);
@@ -282,19 +281,18 @@ function renderResumen() {
   let descuentoM = 0;
   for (const j of jornadasMes) descuentoM += descuentoDeJornada(j);
 
-  const baseMes = 240;
-  const totalTrabM = baseMes - descuentoM;
+  const baseMes = maxDia * 30;
+  const totalTrabM = Math.max(0, baseMes - descuentoM);
   const supM = sumaSupervisor(jornadasMes);
 
   document.getElementById("sumMonthLabel").textContent = `${MONTHS[calMonth]} ${calYear}`;
-
   document.getElementById("sumMonthText").textContent =
     `Tot hs trab: ${totalTrabM}h` +
     (soloSup ? "" : ` | Super: ${supM}h`) +
     ` | Desc: ${descuentoM}h`;
 
   // ======================
-  // QUINCENAS que tocan el mes visible (base 88h; 96h si hay Licencia anual en la quincena)
+  // QUINCENAS que tocan el mes visible (base por perfil: (14-libres)*maxDia)
   // ======================
   const quincenas = dn_calcularResumenQuincenasQueTocanMes(
     calYear,
@@ -314,17 +312,11 @@ function renderResumen() {
     const isoQEnd = dn_toISODate(r.end);
     const jornadasQ = filtrarPorRangoISO(isoQStart, isoQEnd);
 
-    let hayLicAnual = false;
     let descuentoQ = 0;
+    for (const j of jornadasQ) descuentoQ += descuentoDeJornada(j);
 
-    for (const j of jornadasQ) {
-      const tipo = tipoOf(j);
-      if (tipo === "licAnual") hayLicAnual = true;
-      descuentoQ += descuentoDeJornada(j);
-    }
-
-    const baseQ = hayLicAnual ? 96 : 88;
-    const totalTrabQ = baseQ - descuentoQ;
+    const baseQ = HORAS_QUINCENA(maxDia, maxLibresQ);
+    const totalTrabQ = Math.max(0, baseQ - descuentoQ);
     const supQ = sumaSupervisor(jornadasQ);
 
     partes.push(
@@ -337,7 +329,6 @@ function renderResumen() {
 
   document.getElementById("sumQuincenaText").textContent = partes.join(" // ");
 }
-
 
 
 function renderCalendarGrid() {
