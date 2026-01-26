@@ -219,7 +219,6 @@ function bindCalendarNav() {
 }
 
 
-
 function renderResumen() {
   const soloSup = ES_SOLO_SUP();
   const maxDia = MAX_HORAS_DIA();
@@ -285,11 +284,17 @@ function renderResumen() {
   const totalTrabM = Math.max(0, baseMes - descuentoM);
   const supM = sumaSupervisor(jornadasMes);
 
+  // ✅ Saldo histórico (global) de libres trabajados
+  const saldoGlobalObj = dn_calcularSaldoLibresTrabajadosGlobal(jornadas);
+  const saldoHist = Number(saldoGlobalObj?.saldo) || 0;
+  const saldoHistFmt = `${saldoHist >= 0 ? "+" : ""}${saldoHist}`;
+
   document.getElementById("sumMonthLabel").textContent = `${MONTHS[calMonth]} ${calYear}`;
   document.getElementById("sumMonthText").textContent =
     `Tot hs trab: ${totalTrabM}h` +
     (soloSup ? "" : ` | Super: ${supM}h`) +
-    ` | Desc: ${descuentoM}h`;
+    ` | Desc: ${descuentoM}h` +
+    ` | Saldo libres (hist): ${saldoHistFmt}`;
 
   // ======================
   // QUINCENAS que tocan el mes visible (base por perfil: (14-libres)*maxDia)
@@ -329,6 +334,8 @@ function renderResumen() {
 
   document.getElementById("sumQuincenaText").textContent = partes.join(" // ");
 }
+
+
 
 
 function renderCalendarGrid() {
