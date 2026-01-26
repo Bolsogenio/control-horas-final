@@ -2416,3 +2416,25 @@ function _mjSetInfoSuperior(jornada) {
     <div>Impacto: ${impacto}</div>
   `;
 }
+
+// ===============================
+// UX móvil: Enter / Flecha derecha = Continuar/Guardar en modal Jornada
+// (solo dentro de #modalJornada)
+// ===============================
+document.addEventListener("keydown", (e) => {
+  const el = e.target;
+  if (!el) return;
+
+  // Solo inputs dentro del modal
+  if (el.tagName !== "INPUT") return;
+  if (!el.closest("#modalJornada")) return;
+
+  // Algunos teclados usan "ArrowRight" como acción tipo "Enter/Siguiente"
+  if (e.key === "Enter" || e.key === "ArrowRight") {
+    const btnOk = document.getElementById("mjOk");
+    if (btnOk && !btnOk.disabled) {
+      e.preventDefault();
+      btnOk.click();
+    }
+  }
+});
