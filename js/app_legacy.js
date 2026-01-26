@@ -937,9 +937,11 @@ function activarPersona(personaId, opts = {}) {
 
   personaActivaId = personaId;
 
-  // ✅ Sincronizar categoría activa desde la persona (S o CS)
-  CATEGORIA_ACTUAL = (personas[personaId].categoria === "S") ? "S" : "CS";
+  // ✅ PERFIL_ACTUAL debe reflejar el perfil de la persona activa
+  PERFIL_ACTUAL = perfilDesdePersona(personas[personaId]);
 
+  // ✅ Categoría activa desde la persona (S o CS)
+  CATEGORIA_ACTUAL = (personas[personaId].categoria === "S") ? "S" : "CS";
 
   // Alias de jornadas para el resto del legacy
   jornadas = Array.isArray(personas[personaId].jornadas) ? personas[personaId].jornadas : [];
