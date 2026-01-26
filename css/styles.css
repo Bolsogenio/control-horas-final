@@ -428,3 +428,53 @@
   opacity: 0;
   pointer-events: none;
 }
+
+/* ===============================
+   MOBILE UX (2026-01)
+   - Calendario y modal legibles en móvil
+   - Focus visible (sin depender de :focus-visible)
+   =============================== */
+
+:root{
+  --focus-ring: rgba(255,255,255,.90);
+  --focus-ring2: rgba(0,0,0,.40);
+}
+
+@media (max-width: 520px){
+
+  /* Calendario: agrandar texto/celdas (está en px, hay que tocar px) */
+  .cal-grid { grid-auto-rows: 82px; }
+  .cal-daynum { font-size: 16px; }
+  .cal-summary { font-size: 13px; line-height: 1.2; }
+
+  /* Modal Jornada: inputs más grandes y fáciles de tocar */
+  .mj-label { font-size: 14px; }
+  .mj-label input{
+    width: 96px;
+    padding: 12px 12px;
+    font-size: 18px;
+  }
+
+  .mj-opt{ font-size: 15px; padding: 10px 10px; }
+  .mj-foot button{ font-size: 16px; padding: 12px 14px; }
+
+  /* Focus visible en móvil (no depende de focus-visible) */
+  #modalJornada input:focus,
+  #modalJornada button:focus,
+  #modalJornada select:focus{
+    outline: none;
+    box-shadow:
+      0 0 0 3px var(--focus-ring),
+      0 0 0 6px var(--focus-ring2);
+    border-radius: 10px;
+  }
+}
+
+/* Modal Jornada: que los inputs se vean claros al focusear */
+#modalJornada input:focus-visible{
+  box-shadow:
+    0 0 0 3px var(--focus-ring),
+    0 0 0 6px var(--focus-ring2);
+}
+
+
