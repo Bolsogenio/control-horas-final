@@ -4,211 +4,231 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Control de Horas</title>
-  <link rel="stylesheet" href="css/styles.css?v=20260126-0400">
+
+  <!-- Bootstrap (CSS) -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Tu CSS SIEMPRE después de Bootstrap -->
+  <link rel="stylesheet" href="css/styles.css">
+
   <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#1f2937">
-<!-- ===============================
-     iOS PWA SUPPORT (Safari)
-     =============================== -->
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Control de Horas">
-<meta name="mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1f2937">
 
-<link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
+  <!-- ===============================
+       iOS PWA SUPPORT (Safari)
+       =============================== -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Control de Horas">
+  <meta name="mobile-web-app-capable" content="yes">
 
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/icon-180.png">
 </head>
+
 <body>
 
-<div id="personaActions" class="persona-actions">
-  <label for="personaSelect"><strong>Persona:</strong></label>
+  <!-- Contenedor Bootstrap: mejora lectura/espaciado en móvil -->
+  <div class="container py-3">
 
-  <select id="personaSelect"></select>
+    <div id="personaActions" class="persona-actions">
+      <label for="personaSelect"><strong>Persona:</strong></label>
 
-  <!-- NUEVO: info persona activa -->
-  <div class="persona-active-info">
-    <span id="personaCategoriaActiva" class="pa-categoria">—</span>
-  </div>
+      <select id="personaSelect"></select>
 
-  <div class="persona-actions-buttons">
-    <button id="btnNuevaPersona" type="button">+ Nueva persona</button>
+      <!-- NUEVO: info persona activa -->
+      <div class="persona-active-info">
+        <span id="personaCategoriaActiva" class="pa-categoria">—</span>
+      </div>
 
-    <button id="btnBorrarPersona" type="button" class="btn-danger" hidden>
-      🗑 Borrar
-    </button>
-  </div>
+      <div class="persona-actions-buttons">
+        <button id="btnNuevaPersona" type="button">+ Nueva persona</button>
 
-  <!-- 2º renglón fijo: confirmación inline (NO cambia tamaño) -->
-  <div id="personaDeleteConfirmRow" class="pa-confirm pa-confirm--off" aria-live="polite">
-    <span id="personaDeleteConfirmText" class="pa-confirm-text"></span>
+        <button id="btnBorrarPersona" type="button" class="btn-danger" hidden>
+          🗑 Borrar
+        </button>
+      </div>
 
-    <div class="pa-confirm-buttons">
-      <button id="btnCancelarBorrarPersona" type="button">Cancelar</button>
-      <button id="btnConfirmarBorrarPersona" type="button" class="btn-danger">
-        Confirmar borrado
-      </button>
-    </div>
-  </div>
-</div>
+      <!-- 2º renglón fijo: confirmación inline (NO cambia tamaño) -->
+      <div id="personaDeleteConfirmRow" class="pa-confirm pa-confirm--off" aria-live="polite">
+        <span id="personaDeleteConfirmText" class="pa-confirm-text"></span>
 
-
-  <h1>Control de Horas</h1>
-
-  <div class="card">
-    <p><strong>Hoy:</strong> <span id="todayText">—</span></p>
-  </div>
-
-  <hr>
-
-  <!-- LISTA INTERNA (queda, pero luego se ocultará o eliminará) -->
-  <div id="listaJornadas" hidden>
-    <h2>Jornadas registradas</h2>
-    <ul id="daysList"></ul>
-  </div>
-
-  <hr>
-
-  <h2>Calendario mensual</h2>
-
-  <!-- SETUP: Crear primera persona (se muestra solo si no hay personas) -->
-  <div id="personaSetup" class="setup-card" hidden>
-    <h3>Crear primera persona</h3>
-    <p class="setup-sub">
-      Necesitamos tu perfil para aplicar las reglas del calendario (horas/día, libres por quincena y categoría).
-    </p>
-
-    <div class="setup-grid">
-      <label class="setup-field">
-        <span>Nombre</span>
-        <input id="psNombre" type="text" placeholder="Ej: Gerardo" autocomplete="off" />
-      </label>
-
-      <label class="setup-field">
-        <span>Categoría</span>
-        <select id="psCategoria">
-          <option value="cs">Crupier / Supervisor (dual)</option>
-          <option value="s">Solo Supervisor</option>
-        </select>
-      </label>
-
-      <label class="setup-field">
-        <span>Horas por día</span>
-        <input id="psHoras" type="number" min="0.5" max="9" step="0.5" value="8" />
-      </label>
-
-      <label class="setup-field">
-        <span>Libres por quincena</span>
-        <input id="psLibres" type="number" min="2" max="12" step="1" value="3" />
-      </label>
-    </div>
-
-    <div class="setup-actions">
-      <!-- NUEVO: cancelar -->
-      <button id="psCancelarBtn" type="button">Cancelar</button>
-
-      <button id="psCrearBtn" type="button" class="btn-primary">Crear</button>
-      <div id="psMsg" class="setup-msg" aria-live="polite"></div>
-    </div>
-  </div>
-
-  <div class="cal-header">
-    <button id="prevMonthBtn" type="button">◀</button>
-    <div id="monthLabel" class="cal-title">—</div>
-    <button id="nextMonthBtn" type="button">▶</button>
-  </div>
-
-  <div id="weekdays" class="cal-weekdays"></div>
-  <div id="calendarGrid" class="cal-grid"></div>
-
-  <hr>
-
-  <h2>Resumen</h2>
-
-  <div class="card">
-    <p><strong>Quincena:</strong> <span id="sumQuincenaRange">—</span></p>
-    <p id="sumQuincenaText">—</p>
-  </div>
-
-  <div class="card">
-    <p><strong>Mes:</strong> <span id="sumMonthLabel">—</span></p>
-    <p id="sumMonthText">—</p>
-  </div>
-
-  <!-- Modal Editor Jornada (HTML) -->
-  <div id="modalJornada" class="mj-backdrop" hidden>
-    <div class="mj-modal" role="dialog" aria-modal="true" aria-labelledby="mjTitle">
-      <div class="mj-head">
-        <div id="mjInfo" class="mj-info">—</div>
-        <div id="mjCambiando" class="mj-cambiando" hidden></div>
-
-        <div class="mj-body">
-          <!-- Izquierda: horas -->
-          <div class="mj-col-left">
-            <label class="mj-label">
-              Descuento (hs)
-              <input id="mjDesc" type="text" inputmode="decimal" autocomplete="off" />
-            </label>
-
-            <label class="mj-label">
-              Supervisor (hs)
-              <input id="mjSupervisor" type="text" inputmode="decimal" autocomplete="off" />
-            </label>
-
-            <div id="mjMsg" class="mj-msg" hidden></div>
-          </div>
-
-          <!-- Derecha: tipo de día (RADIO) -->
-          <div class="mj-col-right" id="mjTipos">
-            <label class="mj-opt">
-              <input type="radio" name="mjTipo" value="normal" checked />
-              Normal
-            </label>
-
-            <label class="mj-opt">
-              <input type="radio" name="mjTipo" value="libre" />
-              Libre
-            </label>
-
-            <label class="mj-opt">
-              <input type="radio" name="mjTipo" value="falta" />
-              Falta
-            </label>
-
-            <label class="mj-opt">
-              <input type="radio" name="mjTipo" value="libreTrabajado" />
-              Libre trabajado
-            </label>
-
-            <label class="mj-opt">
-              <input type="radio" name="mjTipo" value="compensado" />
-              Compensado
-            </label>
-
-            <label class="mj-opt">
-              <input type="radio" name="mjTipo" value="licAnual" />
-              Licencia anual
-            </label>
-
-            <label class="mj-opt">
-              <input type="radio" name="mjTipo" value="licEnfermedad" />
-              Licencia enfermedad
-            </label>
-
-            <label class="mj-opt">
-              <input type="radio" name="mjTipo" value="licSinGoce" />
-              Licencia sin goce
-            </label>
-          </div>
-        </div>
-
-        <div class="mj-foot">
-          <button id="mjCancel" type="button">Cancelar</button>
-          <button id="mjReset" type="button">Reiniciar</button>
-          <button id="mjOk" type="button">Continuar</button>
+        <div class="pa-confirm-buttons">
+          <button id="btnCancelarBorrarPersona" type="button">Cancelar</button>
+          <button id="btnConfirmarBorrarPersona" type="button" class="btn-danger">
+            Confirmar borrado
+          </button>
         </div>
       </div>
     </div>
-  </div>
+
+    <h1 class="h3 mb-3">Control de Horas</h1>
+
+    <div class="card mb-3">
+      <div class="card-body py-2">
+        <p class="mb-0"><strong>Hoy:</strong> <span id="todayText">—</span></p>
+      </div>
+    </div>
+
+    <hr class="my-3">
+
+    <!-- LISTA INTERNA (queda, pero luego se ocultará o eliminará) -->
+    <div id="listaJornadas" hidden>
+      <h2 class="h5">Jornadas registradas</h2>
+      <ul id="daysList"></ul>
+    </div>
+
+    <hr class="my-3">
+
+    <h2 class="h5 mb-2">Calendario mensual</h2>
+
+    <!-- SETUP: Crear primera persona (se muestra solo si no hay personas) -->
+    <div id="personaSetup" class="setup-card" hidden>
+      <h3 class="h6 mb-2">Crear primera persona</h3>
+      <p class="setup-sub mb-3">
+        Necesitamos tu perfil para aplicar las reglas del calendario (horas/día, libres por quincena y categoría).
+      </p>
+
+      <div class="setup-grid">
+        <label class="setup-field">
+          <span>Nombre</span>
+          <input id="psNombre" type="text" placeholder="Ej: Gerardo" autocomplete="off" />
+        </label>
+
+        <label class="setup-field">
+          <span>Categoría</span>
+          <select id="psCategoria">
+            <option value="cs">Crupier / Supervisor (dual)</option>
+            <option value="s">Solo Supervisor</option>
+          </select>
+        </label>
+
+        <label class="setup-field">
+          <span>Horas por día</span>
+          <input id="psHoras" type="number" min="0.5" max="9" step="0.5" value="8" />
+        </label>
+
+        <label class="setup-field">
+          <span>Libres por quincena</span>
+          <input id="psLibres" type="number" min="2" max="12" step="1" value="3" />
+        </label>
+      </div>
+
+      <div class="setup-actions">
+        <!-- NUEVO: cancelar -->
+        <button id="psCancelarBtn" type="button">Cancelar</button>
+
+        <button id="psCrearBtn" type="button" class="btn-primary">Crear</button>
+        <div id="psMsg" class="setup-msg" aria-live="polite"></div>
+      </div>
+    </div>
+
+    <div class="cal-header">
+      <button id="prevMonthBtn" type="button">◀</button>
+      <div id="monthLabel" class="cal-title">—</div>
+      <button id="nextMonthBtn" type="button">▶</button>
+    </div>
+
+    <div id="weekdays" class="cal-weekdays"></div>
+    <div id="calendarGrid" class="cal-grid"></div>
+
+    <hr class="my-3">
+
+    <h2 class="h5 mb-2">Resumen</h2>
+
+    <div class="card mb-3">
+      <div class="card-body py-2">
+        <p class="mb-1"><strong>Quincena:</strong> <span id="sumQuincenaRange">—</span></p>
+        <p id="sumQuincenaText" class="mb-0">—</p>
+      </div>
+    </div>
+
+    <div class="card mb-3">
+      <div class="card-body py-2">
+        <p class="mb-1"><strong>Mes:</strong> <span id="sumMonthLabel">—</span></p>
+        <p id="sumMonthText" class="mb-0">—</p>
+      </div>
+    </div>
+
+    <!-- Modal Editor Jornada (HTML) -->
+    <div id="modalJornada" class="mj-backdrop" hidden>
+      <div class="mj-modal" role="dialog" aria-modal="true" aria-labelledby="mjTitle">
+        <div class="mj-head">
+          <div id="mjInfo" class="mj-info">—</div>
+          <div id="mjCambiando" class="mj-cambiando" hidden></div>
+
+          <div class="mj-body">
+            <!-- Izquierda: horas -->
+            <div class="mj-col-left">
+              <label class="mj-label">
+                Descuento (hs)
+                <input id="mjDesc" type="text" inputmode="decimal" autocomplete="off" />
+              </label>
+
+              <label class="mj-label">
+                Supervisor (hs)
+                <input id="mjSupervisor" type="text" inputmode="decimal" autocomplete="off" />
+              </label>
+
+              <div id="mjMsg" class="mj-msg" hidden></div>
+            </div>
+
+            <!-- Derecha: tipo de día (RADIO) -->
+            <div class="mj-col-right" id="mjTipos">
+              <label class="mj-opt">
+                <input type="radio" name="mjTipo" value="normal" checked />
+                Normal
+              </label>
+
+              <label class="mj-opt">
+                <input type="radio" name="mjTipo" value="libre" />
+                Libre
+              </label>
+
+              <label class="mj-opt">
+                <input type="radio" name="mjTipo" value="falta" />
+                Falta
+              </label>
+
+              <label class="mj-opt">
+                <input type="radio" name="mjTipo" value="libreTrabajado" />
+                Libre trabajado
+              </label>
+
+              <label class="mj-opt">
+                <input type="radio" name="mjTipo" value="compensado" />
+                Compensado
+              </label>
+
+              <label class="mj-opt">
+                <input type="radio" name="mjTipo" value="licAnual" />
+                Licencia anual
+              </label>
+
+              <label class="mj-opt">
+                <input type="radio" name="mjTipo" value="licEnfermedad" />
+                Licencia enfermedad
+              </label>
+
+              <label class="mj-opt">
+                <input type="radio" name="mjTipo" value="licSinGoce" />
+                Licencia sin goce
+              </label>
+            </div>
+          </div>
+
+          <div class="mj-foot">
+            <button id="mjCancel" type="button">Cancelar</button>
+            <button id="mjReset" type="button">Reiniciar</button>
+            <button id="mjOk" type="button">Continuar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /container -->
+
+  <!-- (Opcional) Bootstrap JS bundle: NO es necesario para esta fase -->
+  <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script> -->
 
   <!-- EL SCRIPT SIEMPRE AL FINAL -->
   <script type="module" src="js/app.js"></script>
