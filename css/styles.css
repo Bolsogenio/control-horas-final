@@ -458,11 +458,31 @@
   .mj-opt{ font-size: 15px; padding: 10px 10px; }
   .mj-foot button{ font-size: 16px; padding: 12px 14px; }
 
-  /* Focus visible en móvil (no depende de focus-visible) */
+/* ===============================
+  Modal Jornada: mismo comportamiento que formulario
+  (sin foco visual molesto)
+   =============================== */
+
+#modalJornada input:focus,
+#modalJornada input:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 520px){
+  #modalJornada input:focus{
+    background-color: #1e1e1e;   /* un poco más oscuro */
+    border-color: #ffffff;       /* borde blanco visible */
+    color: #ffffff;              /* texto blanco */
+  }
+}
+
+
+/* En móvil, asegurar foco visible aunque no dispare :focus-visible */
+@media (max-width: 520px){
   #modalJornada input:focus,
   #modalJornada button:focus,
   #modalJornada select:focus{
-    outline: none;
     box-shadow:
       0 0 0 3px var(--focus-ring),
       0 0 0 6px var(--focus-ring2);
@@ -470,11 +490,34 @@
   }
 }
 
-/* Modal Jornada: que los inputs se vean claros al focusear */
-#modalJornada input:focus-visible{
-  box-shadow:
-    0 0 0 3px var(--focus-ring),
-    0 0 0 6px var(--focus-ring2);
+/* ===============================
+   FIX FOCO INPUTS MODAL (Mobile)
+   - Evita que el navegador pinte verde/celeste y cambie texto a negro
+   =============================== */
+
+#modalJornada input{
+  -webkit-appearance: none;
+  appearance: none;
+  background: rgba(255,255,255,.08);
+  color: #fff;
+  caret-color: #fff;
+}
+
+/* Al enfocar: fuerza colores (evita “theme highlight” del navegador) */
+#modalJornada input:focus{
+  background: rgba(255,255,255,.08) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important; /* clave en Chrome/Safari */
+  caret-color: #fff !important;
+}
+
+/* Si alguna vez entra autofill (puede dispararse al enfocar) */
+#modalJornada input:-webkit-autofill,
+#modalJornada input:-webkit-autofill:hover,
+#modalJornada input:-webkit-autofill:focus{
+  -webkit-text-fill-color: #fff !important;
+  transition: background-color 99999s ease-out 0s;
+  box-shadow: 0 0 0 1000px rgba(255,255,255,.08) inset !important;
 }
 
 
