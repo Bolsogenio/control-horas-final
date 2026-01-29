@@ -26,61 +26,20 @@
 </head>
 
 <body>
+<div class="container py-3">
 
-  <!-- Contenedor Bootstrap: mejora lectura/espaciado en móvil -->
-  <div class="container py-3">
+  <h1 class="h3 mb-3">Control de Horas</h1>
 
-    <div id="personaActions" class="persona-actions">
-      <label for="personaSelect"><strong>Persona:</strong></label>
-
-      <select id="personaSelect"></select>
-
-      <!-- NUEVO: info persona activa -->
-      <div class="persona-active-info">
-        <span id="personaCategoriaActiva" class="pa-categoria">—</span>
-      </div>
-
-      <div class="persona-actions-buttons">
-        <button id="btnNuevaPersona" type="button">+ Nueva persona</button>
-
-        <button id="btnBorrarPersona" type="button" class="btn-danger" hidden>
-          🗑 Borrar
-        </button>
-      </div>
-
-      <!-- 2º renglón fijo: confirmación inline (NO cambia tamaño) -->
-      <div id="personaDeleteConfirmRow" class="pa-confirm pa-confirm--off" aria-live="polite">
-        <span id="personaDeleteConfirmText" class="pa-confirm-text"></span>
-
-        <div class="pa-confirm-buttons">
-          <button id="btnCancelarBorrarPersona" type="button">Cancelar</button>
-          <button id="btnConfirmarBorrarPersona" type="button" class="btn-danger">
-            Confirmar borrado
-          </button>
-        </div>
-      </div>
+  <div class="card mb-3">
+    <div class="card-body py-2">
+      <p class="mb-0"><strong>Hoy:</strong> <span id="todayText">—</span></p>
     </div>
+  </div>
 
-    <h1 class="h3 mb-3">Control de Horas</h1>
+  <hr class="my-3">
 
-    <div class="card mb-3">
-      <div class="card-body py-2">
-        <p class="mb-0"><strong>Hoy:</strong> <span id="todayText">—</span></p>
-      </div>
-    </div>
-
-    <hr class="my-3">
-
-    <!-- LISTA INTERNA (queda, pero luego se ocultará o eliminará) -->
-    <div id="listaJornadas" hidden>
-      <h2 class="h5">Jornadas registradas</h2>
-      <ul id="daysList"></ul>
-    </div>
-
-    <hr class="my-3">
-
-    <h2 class="h5 mb-2">Calendario mensual</h2>
-
+  <!-- 1) SETUP (solo primera vez) -->
+  <section id="setupWrap">
     <!-- SETUP: Crear primera persona (se muestra solo si no hay personas) -->
     <div id="personaSetup" class="setup-card" hidden>
       <h3 class="h6 mb-2">Crear primera persona</h3>
@@ -114,13 +73,53 @@
       </div>
 
       <div class="setup-actions">
-        <!-- NUEVO: cancelar -->
         <button id="psCancelarBtn" type="button">Cancelar</button>
-
         <button id="psCrearBtn" type="button" class="btn-primary">Crear</button>
         <div id="psMsg" class="setup-msg" aria-live="polite"></div>
       </div>
     </div>
+  </section>
+
+  <!-- 2) CALENDARIO + acciones -->
+  <section id="calendarWrap">
+
+    <div id="personaActions" class="persona-actions">
+      <label for="personaSelect"><strong>Persona:</strong></label>
+      <select id="personaSelect"></select>
+
+      <div class="persona-active-info">
+        <span id="personaCategoriaActiva" class="pa-categoria">—</span>
+      </div>
+
+      <div class="persona-actions-buttons">
+        <button id="btnNuevaPersona" type="button">+ Nueva persona</button>
+
+        <button id="btnBorrarPersona" type="button" class="btn-danger" hidden>
+          🗑 Borrar
+        </button>
+      </div>
+
+      <div id="personaDeleteConfirmRow" class="pa-confirm pa-confirm--off" aria-live="polite">
+        <span id="personaDeleteConfirmText" class="pa-confirm-text"></span>
+
+        <div class="pa-confirm-buttons">
+          <button id="btnCancelarBorrarPersona" type="button">Cancelar</button>
+          <button id="btnConfirmarBorrarPersona" type="button" class="btn-danger">
+            Confirmar borrado
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <hr class="my-3">
+
+    <!-- LISTA INTERNA (queda, pero luego se ocultará o eliminará) -->
+    <div id="listaJornadas" hidden>
+      <h2 class="h5">Jornadas registradas</h2>
+      <ul id="daysList"></ul>
+    </div>
+
+    <h2 class="h5 mb-2">Calendario mensual</h2>
 
     <div class="cal-header">
       <button id="prevMonthBtn" type="button">◀</button>
@@ -132,7 +131,10 @@
     <div id="calendarGrid" class="cal-grid"></div>
 
     <hr class="my-3">
+  </section>
 
+  <!-- 3) RESUMEN -->
+  <section id="resumenWrap">
     <h2 class="h5 mb-2">Resumen</h2>
 
     <div class="card mb-3">
@@ -157,7 +159,6 @@
           <div id="mjCambiando" class="mj-cambiando" hidden></div>
 
           <div class="mj-body">
-            <!-- Izquierda: horas -->
             <div class="mj-col-left">
               <label class="mj-label">
                 Descuento (hs)
@@ -172,47 +173,15 @@
               <div id="mjMsg" class="mj-msg" hidden></div>
             </div>
 
-            <!-- Derecha: tipo de día (RADIO) -->
             <div class="mj-col-right" id="mjTipos">
-              <label class="mj-opt">
-                <input type="radio" name="mjTipo" value="normal" checked />
-                Normal
-              </label>
-
-              <label class="mj-opt">
-                <input type="radio" name="mjTipo" value="libre" />
-                Libre
-              </label>
-
-              <label class="mj-opt">
-                <input type="radio" name="mjTipo" value="falta" />
-                Falta
-              </label>
-
-              <label class="mj-opt">
-                <input type="radio" name="mjTipo" value="libreTrabajado" />
-                Libre trabajado
-              </label>
-
-              <label class="mj-opt">
-                <input type="radio" name="mjTipo" value="compensado" />
-                Compensado
-              </label>
-
-              <label class="mj-opt">
-                <input type="radio" name="mjTipo" value="licAnual" />
-                Licencia anual
-              </label>
-
-              <label class="mj-opt">
-                <input type="radio" name="mjTipo" value="licEnfermedad" />
-                Licencia enfermedad
-              </label>
-
-              <label class="mj-opt">
-                <input type="radio" name="mjTipo" value="licSinGoce" />
-                Licencia sin goce
-              </label>
+              <label class="mj-opt"><input type="radio" name="mjTipo" value="normal" checked /> Normal</label>
+              <label class="mj-opt"><input type="radio" name="mjTipo" value="libre" /> Libre</label>
+              <label class="mj-opt"><input type="radio" name="mjTipo" value="falta" /> Falta</label>
+              <label class="mj-opt"><input type="radio" name="mjTipo" value="libreTrabajado" /> Libre trabajado</label>
+              <label class="mj-opt"><input type="radio" name="mjTipo" value="compensado" /> Compensado</label>
+              <label class="mj-opt"><input type="radio" name="mjTipo" value="licAnual" /> Licencia anual</label>
+              <label class="mj-opt"><input type="radio" name="mjTipo" value="licEnfermedad" /> Licencia enfermedad</label>
+              <label class="mj-opt"><input type="radio" name="mjTipo" value="licSinGoce" /> Licencia sin goce</label>
             </div>
           </div>
 
@@ -225,7 +194,9 @@
       </div>
     </div>
 
-  </div><!-- /container -->
+  </section>
+
+</div><!-- /container -->
 
   <!-- (Opcional) Bootstrap JS bundle: NO es necesario para esta fase -->
   <!-- <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script> -->
