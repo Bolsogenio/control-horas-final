@@ -336,8 +336,6 @@ function renderResumen() {
 }
 
 
-
-
 function renderCalendarGrid() {
   const grid = document.getElementById("calendarGrid");
   grid.innerHTML = "";
@@ -346,7 +344,7 @@ function renderCalendarGrid() {
   const startOffset = firstDay.getDay(); // 0 = domingo
   const startDate = dn_addDays(firstDay, -startOffset);
 
-  for (let i = 0; i < 42; i++) {
+  for (let i = 1; i <= 42; i++) {
     const d = dn_addDays(startDate, i);
     const cell = document.createElement("div");
     cell.className = "cal-cell";
@@ -374,12 +372,22 @@ function renderCalendarGrid() {
 
     if (!esFuturo) {
       cell.addEventListener("click", () => {
-        let idx = ensurePlaceholderJornada(fechaKey);
+        // 1) asegurar que exista un registro para esta fecha
+        ensurePlaceholderJornada(fechaKey);
 
-        if (idx !== -1 && jornadas[idx] && jornadas[idx].fecha === dn_normalizarFecha(fechaKey)) {
+        // 2) recalcular índice real (evita idx -1 o desfasado)
+        const idx = findIndexJornadaPorFecha(fechaKey);
+        if (idx === -1 || !jornadas[idx]) {
+          console.warn("Click calendario: no se pudo resolver jornada para", fechaKey, { idx });
+          return;
+        }
+
+        // 3) persistir si corresponde (igual que antes)
+        if (jornadas[idx] && jornadas[idx].fecha === dn_normalizarFecha(fechaKey)) {
           guardarJornadas();
         }
 
+        // 4) abrir modal con índice válido
         abrirModalJornada(idx);
       });
     } else {
@@ -457,7 +465,6 @@ function renderCalendarGrid() {
     grid.appendChild(cell);
   }
 }
-
 
 
 
@@ -1878,7 +1885,7 @@ _mjEl("mjOk").addEventListener("click", () => {
     // Regla DÍA VACÍO (normal 0/max) en S: si queda igual al default, no guardamos registro
     const defS = DIA_DEFAULT(); // {cr:0, sup:max}
     if (tipo === "normal" && j.crupier === defS.cr && j.supervisor === defS.sup) {
-      jornadas.splice(_mjIndexActual, 1);
+      removeJornadaAtIndex(_mjIndexActual);
       guardarJornadas();
       cerrarModalJornada();
       renderCalendar();
@@ -1957,7 +1964,7 @@ _mjEl("mjOk").addEventListener("click", () => {
   // Regla DÍA VACÍO (normal 8/0)
   const defCS = DIA_DEFAULT();
   if (tipo === "normal" && crCalc === defCS.cr && supVal === defCS.sup) {
-    jornadas.splice(_mjIndexActual, 1);
+    removeJornadaAtIndex(_mjIndexActual);
     guardarJornadas();
     cerrarModalJornada();
     renderCalendar();
