@@ -413,8 +413,8 @@ export function calcularResumenMensual(
   const diasCalendario = Math.floor((end - monthStart) / MS_DIA) + 1;
   const diasTope = Math.min(maxDiasBase, Math.max(0, diasCalendario));
 
-  // Base pagable mensual: días hasta hoy - libres - compensados
-  const baseDias = Math.max(0, diasTope - (mt.diasLibres || 0) - (mt.diasCompensados || 0));
+  // Base pagable mensual: días hasta hoy - libres
+  const baseDias = Math.max(0, diasTope - (mt.diasLibres || 0));
   const baseMesHastaHoy = baseDias * horasBaseCrupier;
 
   const totalPagoSinTope = (Number(mt.total) || 0) + (Number(mt.licenciaHoras) || 0);
@@ -481,10 +481,10 @@ export function calcularResumenQuincenasQueTocanMes(
     const libresHastaHoy = Math.min(Number(qt.diasLibres || 0), maxLibresQuincena);
     const compensadosHastaHoy = Number(qt.diasCompensados) || 0;
 
-    // Días pagables base: (hasta hoy) - libres - compensados, con tope
+    // Días pagables base: (hasta hoy) - libres, con tope
     let diasPagables = Math.min(
       maxDiasPagables,
-      Math.max(0, diasCalendario - libresHastaHoy - compensadosHastaHoy)
+      Math.max(0, diasCalendario - libresHastaHoy)
     );
 
     // ✅ Si hay licencia anual/enfermedad en la quincena, habilita +1 día pagable (8h) (ej: 96h en vez de 88h).
