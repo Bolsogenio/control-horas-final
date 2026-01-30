@@ -1598,6 +1598,10 @@ function bloquearRadioLibreSiCorresponde(fecha, jornadaActual) {
   }
 }
 */
+
+
+
+
 function abrirModalJornada(index) {
   _mjIndexActual = index;
 
@@ -1621,9 +1625,25 @@ function abrirModalJornada(index) {
   _mjTipoOriginal = tipo;
   _mjFechaOriginal = j.fecha;
 
-  // Pre-cargar horas
-  _mjEl("mjDesc").value = String(Number(j.crupier) || 0);
-  _mjEl("mjSupervisor").value = String(Number(j.supervisor) || 0);
+   const soloSup = ES_SOLO_SUP();
+  const maxDia = MAX_HORAS_DIA();
+
+  // En S, mjDesc representa DESCUENTO (no crupier).
+  // Ajustamos "original" para que Reset / Sin cambios tengan sentido.
+  if (soloSup) {
+    _mjOriginalCr = Math.max(0, maxDia - _mjOriginalSup);
+  }
+
+  // Pre-cargar horas (según categoría)
+  if (soloSup) {
+    const sup0 = Number(j.supervisor) || 0;
+    const desc0 = Math.max(0, maxDia - sup0);
+    _mjEl("mjDesc").value = String(desc0);        // descuento
+    _mjEl("mjSupervisor").value = String(sup0);   // se guarda, aunque quede oculto
+  } else {
+    _mjEl("mjDesc").value = String(Number(j.crupier) || 0);
+    _mjEl("mjSupervisor").value = String(Number(j.supervisor) || 0);
+  }
 
   // ✅ Default SOLO para NORMAL (si no hay horas cargadas)
   const entraDefaultNormal =
@@ -1632,13 +1652,24 @@ function abrirModalJornada(index) {
     (Number(j.supervisor) || 0) === 0;
 
   if (entraDefaultNormal) {
-    _mjEl("mjDesc").value = String(MAX_HORAS_DIA());
-    _mjEl("mjSupervisor").value = "0";
+    if (soloSup) {
+      // En S: día completo trabajado por defecto (sin "falta" inventada)
+      _mjEl("mjSupervisor").value = String(maxDia);
+      _mjEl("mjDesc").value = "0";
 
-    // Si era placeholder vacío, que 8/0 NO cuente como "cambio" al abrir
-    if (_mjEraPlaceholderVacio) {
-      _mjOriginalCr = MAX_HORAS_DIA();
-      _mjOriginalSup = 0;
+      if (_mjEraPlaceholderVacio) {
+        _mjOriginalSup = maxDia;
+        _mjOriginalCr = 0; // descuento original
+      }
+    } else {
+      // CS: comportamiento legacy (8/0)
+      _mjEl("mjDesc").value = String(maxDia);
+      _mjEl("mjSupervisor").value = "0";
+
+      if (_mjEraPlaceholderVacio) {
+        _mjOriginalCr = maxDia;
+        _mjOriginalSup = 0;
+      }
     }
   }
 
