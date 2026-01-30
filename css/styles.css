@@ -410,4 +410,8 @@
     border-top: 1px solid rgba(255,255,255,.12);
     padding-top: 10px;
   }
+}/* ===== RESUMEN QUINCENAS ===== */
+#sumQuincenaText {
+  white-space: pre-line;
 }
+
