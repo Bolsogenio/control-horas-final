@@ -1156,8 +1156,6 @@ function pedirSupervisorConTope(crupier, valorActual, maxTotal = MAX_HORAS_DIA()
 }
 
 
-
-
 function editarJornada(index) {
 
   _mjIndexActual = index;
@@ -1172,10 +1170,22 @@ function editarJornada(index) {
   if (r) r.checked = true;
 
   // Inputs horas
-  const inpCr = document.getElementById("mjDesc");
+  const inpDesc = document.getElementById("mjDesc");
   const inpSup = document.getElementById("mjSupervisor");
-  if (inpCr) inpCr.value = (j.crupier ?? 0);
-  if (inpSup) inpSup.value = (j.supervisor ?? 0);
+
+  const max = MAX_HORAS_DIA();
+  const cr = (j.crupier ?? 0);
+  const sup = (j.supervisor ?? 0);
+
+  // ✅ mjDesc muestra DESCUENTO REAL
+  // - Categoría S: desc = max - sup
+  // - Categoría CS: desc = max - cr - sup
+  const descMostrar = ES_SOLO_SUP()
+    ? Math.max(0, max - sup)
+    : Math.max(0, max - cr - sup);
+
+  if (inpDesc) inpDesc.value = descMostrar;
+  if (inpSup) inpSup.value = sup;
 
   // Modal
   const modal = document.getElementById("modalJornada");
@@ -1188,67 +1198,32 @@ function editarJornada(index) {
   try {
     const radioLibre = document.querySelector('input[name="mjTipo"][value="libre"]');
     if (radioLibre) {
-      const keyActual = dn_normalizarFecha(j.fecha);
-      let qIndexActual = null;
-
-      const firstDay = new Date(calYear, calMonth, 1);
-      const startOffset = firstDay.getDay();
-      const startDate = dn_addDays(firstDay, -startOffset);
-
-
-
-      for (let i = 0; i < 42; i++) {
-        const d = dn_addDays(startDate, i);
-        const keyD = dn_toISODate(d);
-        if (keyD === keyActual) {
-          qIndexActual = dn_getQuincenaIndex(d);
-          break;
-        }
-      }
-
-      if (qIndexActual !== null) {
-        let libres = 0;
-
-        for (let i = 0; i < jornadas.length; i++) {
-          const jj = jornadas[i];
-          if (!jj || !jj.fecha) continue;
-          if (jj.libre !== true) continue;
-
-          const keyJJ = dn_normalizarFecha(jj.fecha);
-          let qIdx = null;
-
-          for (let k = 0; k < 42; k++) {
-            const d = dn_addDays(startDate, k);
-            const keyD = dn_toISODate(d);
-            if (keyD === keyJJ) {
-              qIdx = dn_getQuincenaIndex(d);
-              break;
-            }
-          }
-
-          if (qIdx === qIndexActual) libres++;
-        }
-
-        const estaFechaYaEsLibre = (j.libre === true);
-        const deboBloquear = (libres >= MAX_LIBRES_QUINCENA()) && !estaFechaYaEsLibre;
-        radioLibre.disabled = deboBloquear;
-      } else {
-        radioLibre.disabled = false;
-      }
+      const q = dn_getQuincenaRangeParaFecha(dn_normalizarFecha(j.fecha || j.dia || j.date || "")) || null;
+      const libres = dn_contarLibresEnQuincena(q?.from, q?.to);
+      radioLibre.disabled = (libres >= (PERFIL_LIBRES_POR_QUINCENA() || 0));
     }
   } catch (e) {
-    console.warn("No se pudo aplicar tope de LIBRE:", e);
+    // no romper modal si algo falla en el tope libre
+    console.warn("Tope libre: no se pudo evaluar", e);
   }
-  // ====== FIN TOPE LIBRE ======
 
-  // Aplicar UI según tipo si existe helper
-  if (window._mj_aplicarUIporTipo) window._mj_aplicarUIporTipo();
+  // Leyendas
+  try {
+    const info = _mjEl("mjInfo");
+    if (info) info.textContent = _mjImpactoTexto(tipo, j);
+  } catch (e) {}
+
+  // Default paso según categoría
+  if (ES_SOLO_SUP()) {
+    _mjSetPaso("desc"); // en S se usa el input "descuento"
+  } else {
+    _mjSetPaso("sup");  // en CS se empieza por supervisor
+  }
 
   // Mostrar (forzado y limpio)
   modal.hidden = false;
   modal.removeAttribute("hidden");
   modal.style.display = "";
-
 }
 
 
@@ -1296,6 +1271,8 @@ function _mjLabelDeInput(inputId) {
   return inp ? inp.closest("label") : null;
 }
 
+
+
 function _mjSetPaso(paso) {
   _mjPaso = paso;
 
@@ -1305,16 +1282,26 @@ function _mjSetPaso(paso) {
 
   const soloSup = ES_SOLO_SUP();
 
+  const ponerCursorDerecha = (inp) => {
+    try {
+      const v = String(inp.value ?? "");
+      // cursor al final, sin seleccionar todo
+      inp.setSelectionRange(v.length, v.length);
+    } catch (e) {}
+  };
+
   if (paso === "sup") {
     if (lblSup) lblSup.hidden = false;
     if (lblDesc) lblDesc.hidden = true;
 
-    // ✅ En Supervisor permanente no hay paso 2: se guarda desde sup
     if (btnOk) btnOk.textContent = soloSup ? "Guardar" : "Continuar";
 
     setTimeout(() => {
       const inp = _mjEl("mjSupervisor");
-      if (inp) { inp.focus(); inp.select(); }
+      if (inp) {
+        inp.focus();
+        ponerCursorDerecha(inp);
+      }
     }, 0);
     return;
   }
@@ -1323,11 +1310,16 @@ function _mjSetPaso(paso) {
   if (lblSup) lblSup.hidden = true;
   if (lblDesc) lblDesc.hidden = false;
   if (btnOk) btnOk.textContent = "Guardar";
+
   setTimeout(() => {
     const inp = _mjEl("mjDesc");
-    if (inp) { inp.focus(); inp.select(); }
+    if (inp) {
+      inp.focus();
+      ponerCursorDerecha(inp);
+    }
   }, 0);
 }
+
 
 
 

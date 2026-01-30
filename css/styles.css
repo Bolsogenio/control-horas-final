@@ -18,72 +18,45 @@
 }
 
 .persona-actions label {
-  font-size: .9rem;
-  font-weight: 600;
+  font-size: .95rem;
 }
 
-.persona-actions select {
-  min-width: 140px;
+#personaSelect{
   padding: 8px 10px;
   border-radius: 10px;
   border: 1px solid rgba(0,0,0,.15);
+  background: #fff;
 }
 
-.persona-actions-buttons {
+.persona-actions-buttons{
   display: flex;
   gap: 8px;
   margin-left: auto;
 }
 
-.persona-actions button {
-  display: flex;
+.persona-actions button{
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-
-  padding: 8px 12px;
-  border-radius: 999px;
-  border: 1px solid rgba(0,0,0,.15);
-
-  background: rgba(255,255,255,.85);
-  font-weight: 600;
+  gap: 8px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 0;
   cursor: pointer;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 600;
 }
 
-.persona-actions button:hover {
-  background: rgba(0,0,0,.05);
+.persona-actions button:hover{
+  background: #1d4ed8;
 }
 
-.persona-actions button:disabled {
-  opacity: .4;
-  cursor: not-allowed;
+.persona-actions .btn-danger{
+  background: #dc2626;
 }
 
-.persona-actions .btn-danger {
-  color: #b91c1c;
-  border-color: rgba(185,28,28,.35);
-}
-
-.persona-actions .btn-danger:hover {
-  background: rgba(185,28,28,.08);
-}
-
-/* Mobile tweaks */
-@media (max-width: 520px) {
-  .persona-actions {
-    gap: 8px;
-  }
-
-  .persona-actions-buttons {
-    width: 100%;
-    justify-content: space-between;
-    margin-left: 0;
-  }
-
-  .persona-actions button {
-    flex: 1;
-    justify-content: center;
-    padding: 10px;
-  }
+.persona-actions .btn-danger:hover{
+  background: #b91c1c;
 }
 
 /* Badge categoría persona activa (mini modal) */
@@ -91,123 +64,123 @@
   display: flex;
   align-items: center;
 }
-
-#personaCategoriaActiva.pa-categoria{
-  display: inline-block;
-  padding: 4px 8px;
+.pa-categoria{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
   border-radius: 999px;
-  font-size: .82rem;
-  font-weight: 700;
-  line-height: 1;
-  border: 1px solid rgba(0,0,0,.18);
   background: rgba(0,0,0,.06);
+  border: 1px solid rgba(0,0,0,.12);
+  font-size: .85rem;
 }
 
-
-/* ===============================
-   CALENDARIO MENSUAL
-   =============================== */
-
-.cal-header {
+/* Confirmación inline */
+#personaDeleteConfirmRow{
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 10px 0;
+  margin-top: 10px;
 }
 
-.cal-title {
+#personaDeleteConfirmRow .pa-confirm-text{
+  flex: 1 1 auto;
+  font-size: .9rem;
+  opacity: .9;
+}
+
+#personaDeleteConfirmRow .pa-confirm-buttons{
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+  flex-wrap: nowrap; /* Mantiene ambos botones en la misma línea */
+}
+
+#personaDeleteConfirmRow.pa-confirm--off{
+  opacity: 0;
+  pointer-events: none;
+}
+
+@media (max-width: 520px) {
+  .persona-actions { gap: 8px; }
+
+  .persona-actions-buttons{
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+
+  .persona-actions button{
+    flex: 1;
+    justify-content: center;
+    padding: 10px;
+  }
+}
+
+/* ===============================
+   CALENDARIO
+   =============================== */
+
+   /* Colores por quincena (q0/q1/q2) */
+.cal-cell.q0 { background: rgba(59, 130, 246, .10); }   /* azul suave */
+.cal-cell.q1 { background: rgba(34, 197, 94, .10); }    /* verde suave */
+.cal-cell.q2 { background: rgba(234, 179, 8, .12); }    /* amarillo suave */
+
+/* Un poco más de contraste al borde (opcional, queda lindo) */
+.cal-cell.q0 { border-color: rgba(59, 130, 246, .35); }
+.cal-cell.q1 { border-color: rgba(34, 197, 94, .35); }
+.cal-cell.q2 { border-color: rgba(234, 179, 8, .40); }
+
+
+.cal-header{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.cal-title{
   font-weight: 700;
-  flex: 1;
-  text-align: center;
 }
 
-.cal-weekdays {
+.cal-weekdays{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
-  margin-bottom: 6px;
-  font-weight: 600;
-  opacity: 0.85;
+  margin-top: 8px;
+  opacity: .85;
 }
 
-.cal-weekday {
-  text-align: center;
-}
-
-/* ===== GRILLA ===== */
-.cal-grid {
+.cal-grid{
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 6px;
-  grid-auto-rows: 76px;
-  max-width: 520px;
-  margin-left: auto;
-  margin-right: auto;
+  margin-top: 8px;
 }
 
-/* ===== CELDAS ===== */
-.cal-cell {
-  box-sizing: border-box;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  padding: 6px;
+.cal-cell{
+  border: 1px solid rgba(0,0,0,.10);
+  border-radius: 12px;
+  min-height: 78px;
+  padding: 8px;
+  background: rgba(255,255,255,.92);
   cursor: pointer;
-  user-select: none;
-  overflow: hidden;
 }
 
-.cal-cell.other-month {
-  opacity: 0.35;
+.cal-cell:hover{
+  background: rgba(255,255,255,.98);
 }
 
-.cal-cell.today {
-  outline: 2px solid #333;
-}
-
-.cal-cell.future {
-  opacity: 0.25;
-  cursor: not-allowed;
-}
-
-/* ===== CONTENIDO ===== */
-.cal-daynum {
+.cal-daynum{
   font-weight: 700;
-  font-size: 14px;
-  margin-bottom: 2px;
 }
 
-.cal-summary {
+.cal-summary{
+  margin-top: 6px;
   font-size: 12px;
-  opacity: 0.9;
-  margin: 0;
-  line-height: 1.1;
-  overflow: hidden;
-}
-
-/* Colores por quincena */
-.q0 { background: rgba(255, 230, 150, 0.35); }
-.q1 { background: rgba(170, 230, 255, 0.35); }
-.q2 { background: rgba(190, 255, 200, 0.35); }
-
-/* ===== Responsive ===== */
-@media (max-width: 480px) {
-  .cal-grid,
-  .cal-weekdays,
-  .cal-header {
-    max-width: 360px;
-  }
-
-  .cal-grid {
-    grid-auto-rows: 68px;
-  }
-
-  .cal-daynum {
-    font-size: 13px;
-  }
-
-  .cal-summary {
-    font-size: 11px;
-  }
+  line-height: 1.15;
+  opacity: .9;
 }
 
 /* ===============================
@@ -217,22 +190,19 @@
 .mj-backdrop{
   position: fixed;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,.45);
+  background: rgba(0,0,0,.55);
+  display: grid;
+  place-items: center;
+  padding: 14px;
   z-index: 9999;
-  padding: 12px;
 }
 
 .mj-modal{
-  width: min(520px, 92vw);
-  max-height: calc(100vh - 24px);
-  overflow: auto;
-  border-radius: 14px;
-  background: #2f3b52;
+  width: min(720px, 96vw);
+  border-radius: 16px;
+  overflow: hidden;
+  background: rgba(20,20,20,.96);
   color: #fff;
-  box-shadow: 0 10px 30px rgba(0,0,0,.35);
   border: 1px solid rgba(255,255,255,.12);
 }
 
@@ -241,9 +211,20 @@
   border-bottom: 1px solid rgba(255,255,255,.12);
 }
 
+.mj-info{
+  font-weight: 600;
+  opacity: .95;
+}
+
+.mj-cambiando{
+  margin-top: 6px;
+  font-size: .9rem;
+  opacity: .9;
+}
+
 .mj-body{
   display: grid;
-  grid-template-columns: 1fr 200px;
+  grid-template-columns: 160px 1fr;
   gap: 12px;
   padding: 12px 14px;
 }
@@ -251,21 +232,13 @@
 .mj-col-left{
   display: grid;
   gap: 10px;
+  align-content: start;
 }
 
 .mj-label{
-  font-size: 12px;
-  opacity: .95;
-}
-
-.mj-msg{
-  margin-top: 8px;
-  padding: 6px 8px;
-  border-radius: 8px;
-  border: 1px solid rgba(255, 80, 80, .55);
-  background: rgba(255, 80, 80, .10);
-  font-size: 0.9rem;
-  line-height: 1.35;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
 }
 
 .mj-label input{
@@ -277,7 +250,17 @@
   border: 1px solid rgba(255,255,255,.18);
   background: rgba(255,255,255,.08);
   color: #fff;
+
+  /* foco limpio */
   outline: none;
+  box-shadow: none;
+}
+
+/* foco limpio (sin rings ni sombras) */
+#modalJornada input:focus,
+#modalJornada input:focus-visible{
+  outline: none;
+  box-shadow: none;
 }
 
 .mj-col-right{
@@ -302,6 +285,12 @@
   background: rgba(255,255,255,.06);
 }
 
+.mj-msg{
+  margin-top: 8px;
+  font-size: .9rem;
+  opacity: .95;
+}
+
 .mj-foot{
   display: flex;
   justify-content: flex-end;
@@ -323,7 +312,7 @@
   background: rgba(255,255,255,.12);
 }
 
-#modalJornada[hidden] {
+#modalJornada[hidden]{
   display: none !important;
 }
 
@@ -331,7 +320,7 @@
    SETUP PRIMERA PERSONA
    =============================== */
 
-.setup-card {
+.setup-card{
   border: 1px solid rgba(0,0,0,.12);
   border-radius: 12px;
   padding: 14px;
@@ -339,32 +328,32 @@
   background: rgba(255,255,255,.95);
 }
 
-.setup-grid {
+.setup-grid{
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 10px;
 }
 
-.setup-field span {
+.setup-field span{
   font-size: .85rem;
   opacity: .85;
 }
 
 .setup-field input,
-.setup-field select {
+.setup-field select{
   width: 100%;
   padding: 10px;
   border-radius: 10px;
   border: 1px solid rgba(0,0,0,.15);
 }
 
-.setup-actions {
+.setup-actions{
   display: flex;
   gap: 12px;
   margin-top: 12px;
 }
 
-.setup-actions button {
+.setup-actions button{
   padding: 10px 14px;
   border-radius: 10px;
   border: 0;
@@ -374,80 +363,33 @@
   color: #fff;
 }
 
-.setup-actions button:hover {
+.setup-actions button:hover{
   background: #1d4ed8;
 }
 
-.setup-msg {
+.setup-msg{
   font-size: .9rem;
   opacity: .85;
 }
 
 @media (max-width: 640px) {
-  .setup-grid {
+  .setup-grid{
     grid-template-columns: 1fr;
   }
-}
-/* ===============================
-   PERSONA ACTIONS - CONFIRM INLINE (2º RENGLÓN FIJO)
-   =============================== */
-
-#personaDeleteConfirmRow.pa-confirm{
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-
-  /* Reserva el alto para que el bloque no "salte" al aparecer */
-  min-height: 34px;
-
-  margin-top: 6px;
-}
-
-#personaDeleteConfirmRow .pa-confirm-text{
-  font-size: .9rem;
-  font-weight: 600;
-  opacity: .85;
-  /* Evita que empuje los botones a otra línea por una frase larga */
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-#personaDeleteConfirmRow .pa-confirm-buttons{
-  display: flex;
-  gap: 8px;
-  flex: 0 0 auto;
-  /* Mantiene ambos botones en la misma línea */
-  flex-wrap: nowrap;
-}
-
-#personaDeleteConfirmRow.pa-confirm--off{
-  opacity: 0;
-  pointer-events: none;
 }
 
 /* ===============================
    MOBILE UX (2026-01)
    - Calendario y modal legibles en móvil
-   - Focus visible (sin depender de :focus-visible)
    =============================== */
 
-:root{
-  --focus-ring: rgba(255,255,255,.90);
-  --focus-ring2: rgba(0,0,0,.40);
-}
-
 @media (max-width: 520px){
-
-  /* Calendario: agrandar texto/celdas (está en px, hay que tocar px) */
+  /* Calendario */
   .cal-grid { grid-auto-rows: 82px; }
   .cal-daynum { font-size: 16px; }
   .cal-summary { font-size: 13px; line-height: 1.2; }
 
-  /* Modal Jornada: inputs más grandes y fáciles de tocar */
+  /* Modal Jornada: inputs más grandes */
   .mj-label { font-size: 14px; }
   .mj-label input{
     width: 96px;
@@ -458,77 +400,14 @@
   .mj-opt{ font-size: 15px; padding: 10px 10px; }
   .mj-foot button{ font-size: 16px; padding: 12px 14px; }
 
-/* ===============================
-  Modal Jornada: mismo comportamiento que formulario
-  (sin foco visual molesto)
-   =============================== */
-
-#modalJornada input:focus,
-#modalJornada input:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-}
-
-@media (max-width: 520px){
-  #modalJornada input:focus{
-    background-color: #1e1e1e;   /* un poco más oscuro */
-    border-color: #ffffff;       /* borde blanco visible */
-    color: #ffffff;              /* texto blanco */
+  .mj-body{
+    grid-template-columns: 1fr;
   }
-}
 
-
-/* En móvil, asegurar foco visible aunque no dispare :focus-visible */
-@media (max-width: 520px){
-  #modalJornada input:focus,
-  #modalJornada button:focus,
-  #modalJornada select:focus{
-    box-shadow:
-      0 0 0 3px var(--focus-ring),
-      0 0 0 6px var(--focus-ring2);
-    border-radius: 10px;
+  .mj-col-right{
+    border-left: 0;
+    padding-left: 0;
+    border-top: 1px solid rgba(255,255,255,.12);
+    padding-top: 10px;
   }
-}
-
-/* ===============================
-   FIX FOCO INPUTS MODAL (Mobile)
-   - Evita que el navegador pinte verde/celeste y cambie texto a negro
-   =============================== */
-
-#modalJornada input{
-  -webkit-appearance: none;
-  appearance: none;
-  background: rgba(255,255,255,.08);
-  color: #fff;
-  caret-color: #fff;
-}
-
-/* Al enfocar: fuerza colores (evita “theme highlight” del navegador) */
-#modalJornada input:focus{
-  background: rgba(255,255,255,.08) !important;
-  color: #fff !important;
-  -webkit-text-fill-color: #fff !important; /* clave en Chrome/Safari */
-  caret-color: #fff !important;
-}
-
-/* Si alguna vez entra autofill (puede dispararse al enfocar) */
-#modalJornada input:-webkit-autofill,
-#modalJornada input:-webkit-autofill:hover,
-#modalJornada input:-webkit-autofill:focus{
-  -webkit-text-fill-color: #fff !important;
-  transition: background-color 99999s ease-out 0s;
-  box-shadow: 0 0 0 1000px rgba(255,255,255,.08) inset !important;
-}
-#sumQuincenaText {
-  white-space: pre-line; /* respeta \n */
-  font-size: 0.95rem;
-  line-height: 1.25;
-}
-#sumMonthText {
-  white-space: pre-line;
-  font-size: 0.95rem;
-  line-height: 1.25;
-}
-
-
 }
