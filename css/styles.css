@@ -519,5 +519,16 @@
   transition: background-color 99999s ease-out 0s;
   box-shadow: 0 0 0 1000px rgba(255,255,255,.08) inset !important;
 }
+#sumQuincenaText {
+  white-space: pre-line; /* respeta \n */
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+#sumMonthText {
+  white-space: pre-line;
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
 
 
+}

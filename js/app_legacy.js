@@ -234,7 +234,7 @@ function renderResumen() {
     if (tipo === "falta" || tipo === "licSinGoce") return maxDia;
 
     // Tipos donde descuenta "lo que falta" para completar el tope del día
-    if (tipo === "normal" || tipo === "libreTrabajado" || tipo === "compensado") {
+    if (tipo === "normal" || tipo === "libreTrabajado" ) {
       const cr = Number(j.crupier || 0);
       const sup = Number(j.supervisor || 0);
       const total = cr + sup;
@@ -252,7 +252,7 @@ function renderResumen() {
     for (const j of arr) {
       if (!j) continue;
       const tipo = tipoOf(j);
-      if (tipo === "normal" || tipo === "libreTrabajado" || tipo === "compensado") {
+      if (tipo === "normal" || tipo === "libreTrabajado" ) {
         s += Number(j.supervisor || 0);
       }
     }
@@ -290,11 +290,11 @@ function renderResumen() {
   const saldoHistFmt = `${saldoHist >= 0 ? "+" : ""}${saldoHist}`;
 
   document.getElementById("sumMonthLabel").textContent = `${MONTHS[calMonth]} ${calYear}`;
-  document.getElementById("sumMonthText").textContent =
-    `Tot hs trab: ${totalTrabM}h` +
-    (soloSup ? "" : ` | Super: ${supM}h`) +
-    ` | Desc: ${descuentoM}h` +
-    ` | Saldo libres (hist): ${saldoHistFmt}`;
+document.getElementById("sumMonthText").textContent =
+  `Tot hs trab: ${totalTrabM}h\n` +
+  (soloSup ? "" : `Super: ${supM}h\n`) +
+  `Desc: ${descuentoM}h\n` +
+  `Saldo libres (hist): ${saldoHistFmt}`;
 
   // ======================
   // QUINCENAS que tocan el mes visible (base por perfil: (14-libres)*maxDia)
@@ -332,7 +332,7 @@ function renderResumen() {
     );
   }
 
-  document.getElementById("sumQuincenaText").textContent = partes.join(" // ");
+  document.getElementById("sumQuincenaText").textContent = partes.join("\n");
 }
 
 
