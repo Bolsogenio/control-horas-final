@@ -234,7 +234,7 @@ function renderResumen() {
     if (tipo === "falta" || tipo === "licSinGoce") return maxDia;
 
     // Tipos donde descuenta "lo que falta" para completar el tope del día
-    if (tipo === "normal" || tipo === "libreTrabajado" ) {
+    if (tipo === "normal" || tipo === "libreTrabajado") {
       const cr = Number(j.crupier || 0);
       const sup = Number(j.supervisor || 0);
       const total = cr + sup;
@@ -252,7 +252,7 @@ function renderResumen() {
     for (const j of arr) {
       if (!j) continue;
       const tipo = tipoOf(j);
-      if (tipo === "normal" || tipo === "libreTrabajado" ) {
+      if (tipo === "normal" || tipo === "libreTrabajado") {
         s += Number(j.supervisor || 0);
       }
     }
@@ -290,11 +290,11 @@ function renderResumen() {
   const saldoHistFmt = `${saldoHist >= 0 ? "+" : ""}${saldoHist}`;
 
   document.getElementById("sumMonthLabel").textContent = `${MONTHS[calMonth]} ${calYear}`;
-document.getElementById("sumMonthText").textContent =
-  `Tot hs trab: ${totalTrabM}h\n` +
-  (soloSup ? "" : `Super: ${supM}h\n`) +
-  `Desc: ${descuentoM}h\n` +
-  `Saldo libres (hist): ${saldoHistFmt}`;
+  document.getElementById("sumMonthText").textContent =
+    `Tot hs trab: ${totalTrabM}h\n` +
+    (soloSup ? "" : `Super: ${supM}h\n`) +
+    `Desc: ${descuentoM}h\n` +
+    `Saldo libres (hist): ${saldoHistFmt}`;
 
   // ======================
   // QUINCENAS que tocan el mes visible (base por perfil: (14-libres)*maxDia)
@@ -1211,7 +1211,7 @@ function editarJornada(index) {
   try {
     const info = _mjEl("mjInfo");
     if (info) info.textContent = _mjImpactoTexto(tipo, j);
-  } catch (e) {}
+  } catch (e) { }
 
   // Default paso según categoría
   if (ES_SOLO_SUP()) {
@@ -1287,7 +1287,7 @@ function _mjSetPaso(paso) {
       const v = String(inp.value ?? "");
       // cursor al final, sin seleccionar todo
       inp.setSelectionRange(v.length, v.length);
-    } catch (e) {}
+    } catch (e) { }
   };
 
   if (paso === "sup") {
@@ -1649,14 +1649,14 @@ function abrirModalJornada(index) {
     aplicarUIporTipo();
   }
 
-// ✅ El flujo lo decide aplicarUIporTipo() (un solo cerebro)
-_mjTempSup = 0;
-_mjTempDesc = 0;
+  // ✅ El flujo lo decide aplicarUIporTipo() (un solo cerebro)
+  _mjTempSup = 0;
+  _mjTempDesc = 0;
 
-// Si no hay horas habilitadas, foco al OK; si hay, aplicarUIporTipo ya pone el foco correcto.
-if (!dn_horasHabilitadas(tipo)) {
-  setTimeout(() => _mjEl("mjOk")?.focus(), 0);
-}
+  // Si no hay horas habilitadas, foco al OK; si hay, aplicarUIporTipo ya pone el foco correcto.
+  if (!dn_horasHabilitadas(tipo)) {
+    setTimeout(() => _mjEl("mjOk")?.focus(), 0);
+  }
 
   _mjActualizarLeyendas();
   _mjEl("modalJornada").hidden = false;
@@ -1776,86 +1776,168 @@ export function legacyInit() {
   _mjEl("mjCancel").addEventListener("click", () => cerrarModalJornada());
 
 
-_mjEl("mjOk").addEventListener("click", () => {
-  if (_mjIndexActual === null) return;
+  _mjEl("mjOk").addEventListener("click", () => {
+    if (_mjIndexActual === null) return;
 
-  const j = jornadas[_mjIndexActual];
-  const tipo = _mjGetTipo();
+    const j = jornadas[_mjIndexActual];
+    const tipo = _mjGetTipo();
 
-  // ===============================
-  // Control: máximo LIBRES por quincena (según perfil)
-  // ===============================
-  if (tipo === "libre") {
-    const fechaActual = dn_normalizarFecha(j?.fecha);
-    const yaEraLibre = !!j?.libre;
+    // ===============================
+    // Control: máximo LIBRES por quincena (según perfil)
+    // ===============================
+    if (tipo === "libre") {
+      const fechaActual = dn_normalizarFecha(j?.fecha);
+      const yaEraLibre = !!j?.libre;
 
-    if (!yaEraLibre && fechaActual) {
-      const qIndexActual = dn_getQuincenaIndex(
-        new Date(fechaActual + "T00:00:00")
-      );
-
-      let libres = 0;
-
-      for (let i = 0; i < jornadas.length; i++) {
-        const jj = jornadas[i];
-        if (!jj || jj.libre !== true) continue;
-
-        const keyJJ = dn_normalizarFecha(jj.fecha);
-        if (!keyJJ) continue;
-
-        const qIdx = dn_getQuincenaIndex(
-          new Date(keyJJ + "T00:00:00")
+      if (!yaEraLibre && fechaActual) {
+        const qIndexActual = dn_getQuincenaIndex(
+          new Date(fechaActual + "T00:00:00")
         );
 
-        if (qIdx === qIndexActual) {
-          libres++;
+        let libres = 0;
+
+        for (let i = 0; i < jornadas.length; i++) {
+          const jj = jornadas[i];
+          if (!jj || jj.libre !== true) continue;
+
+          const keyJJ = dn_normalizarFecha(jj.fecha);
+          if (!keyJJ) continue;
+
+          const qIdx = dn_getQuincenaIndex(
+            new Date(keyJJ + "T00:00:00")
+          );
+
+          if (qIdx === qIndexActual) {
+            libres++;
+          }
+        }
+
+        // ✅ Bloquear al intentar marcar el (máximo + 1)
+        if (libres >= MAX_LIBRES_QUINCENA()) {
+          _mjMostrarMsg(
+            "Ya se alcanzó el máximo de días LIBRES en esta quincena. Elegí otra opción o presioná Cancelar."
+          );
+          return;
         }
       }
+    }
 
-      // ✅ Bloquear al intentar marcar el (máximo + 1)
-      if (libres >= MAX_LIBRES_QUINCENA()) {
+    // ===============================
+    // Aplicar tipo (flags)
+    // ===============================
+    dn_aplicarTipoAFlags(j, tipo);
+
+    // ===============================
+    // Tipos sin horas → guardar directo
+    // ===============================
+    if (!dn_horasHabilitadas(tipo)) {
+      j.crupier = 0;
+      j.supervisor = 0;
+
+      guardarJornadas();
+      cerrarModalJornada();
+      renderCalendar();
+      return;
+    }
+
+    const descInp = _mjEl("mjDesc");
+    const supInp = _mjEl("mjSupervisor");
+
+    const max = MAX_HORAS_DIA();
+
+    // =====================================================
+    // ✅ CATEGORÍA S (solo supervisor):
+    // El input que se usa es DESCUENTO (mjDesc).
+    // Se guarda: SUP = max - desc ; CR = 0
+    // =====================================================
+    if (ES_SOLO_SUP()) {
+      const descTxt = (descInp?.value || "").trim().replace(",", ".");
+      const descVal = descTxt === "" ? 0 : Number(descTxt);
+
+      // Validar descuento 0..max (en S NO existe sup input)
+      const v = dn_validarHoras(descVal, 0, max); // desc + 0 <= max
+      if (!v.ok) {
+        _mjMostrarMsg(v.msg);
+        return;
+      }
+
+      // Normal / Libre trabajado: no puede ser 0 horas trabajadas (descuento completo)
+      if ((tipo === "normal" || tipo === "libreTrabajado") && descVal >= max) {
         _mjMostrarMsg(
-          "Ya se alcanzó el máximo de días LIBRES en esta quincena. Elegí otra opción o presioná Cancelar."
+          "No podés marcar Normal/Libre trabajado si no trabajó horas (descuento completo)."
         );
         return;
       }
+
+      const supCalc = Math.max(0, max - descVal);
+
+      j.crupier = 0;
+      j.supervisor = supCalc;
+
+      // Regla DÍA VACÍO (normal 0/max) en S: si queda igual al default, no guardamos registro
+      const defS = DIA_DEFAULT(); // {cr:0, sup:max}
+      if (tipo === "normal" && j.crupier === defS.cr && j.supervisor === defS.sup) {
+        removeJornadaAtIndex(_mjIndexActual);
+        guardarJornadas();
+        cerrarModalJornada();
+        renderCalendar();
+        return;
+      }
+
+      guardarJornadas();
+      cerrarModalJornada();
+      renderCalendar();
+      return;
     }
-  }
 
-  // ===============================
-  // Aplicar tipo (flags)
-  // ===============================
-  dn_aplicarTipoAFlags(j, tipo);
+    // ===============================
+    // CS: PASO SUPERVISOR (1)  — primero
+    // ===============================
+    if (_mjPaso === "sup") {
+      const supTxt = (supInp.value || "").trim().replace(",", ".");
+      const supVal = supTxt === "" ? 0 : Number(supTxt);
 
-  // ===============================
-  // Tipos sin horas → guardar directo
-  // ===============================
-  if (!dn_horasHabilitadas(tipo)) {
-    j.crupier = 0;
-    j.supervisor = 0;
+      // Validación básica (solo SUP)
+      const vSup = dn_validarHoras(0, supVal, max);
+      if (!vSup.ok) {
+        _mjMostrarMsg(vSup.msg);
+        return;
+      }
 
-    guardarJornadas();
-    cerrarModalJornada();
-    renderCalendar();
-    return;
-  }
+      // Si SUP completa la jornada: termina acá (no pedir descuento)
+      if (supVal >= max) {
+        j.crupier = 0;
+        j.supervisor = max;
 
-  const descInp = _mjEl("mjDesc");
-  const supInp = _mjEl("mjSupervisor");
+        guardarJornadas();
+        cerrarModalJornada();
+        renderCalendar();
+        return;
+      }
 
-  const max = MAX_HORAS_DIA();
+      // SUP parcial: pasar a DESCUENTO
+      _mjTempSup = supVal;
 
-  // =====================================================
-  // ✅ CATEGORÍA S (solo supervisor):
-  // El input que se usa es DESCUENTO (mjDesc).
-  // Se guarda: SUP = max - desc ; CR = 0
-  // =====================================================
-  if (ES_SOLO_SUP()) {
-    const descTxt = (descInp?.value || "").trim().replace(",", ".");
+      // ✅ correcto: descuento neutral
+      descInp.value = "0";
+
+
+      _mjMostrarMsg("");
+
+      _mjSetPaso("desc");
+      return;
+    }
+
+    // ===============================
+    // CS: PASO DESCUENTO (2)
+    // ===============================
+    const descTxt = (descInp.value || "").trim().replace(",", ".");
     const descVal = descTxt === "" ? 0 : Number(descTxt);
 
-    // Validar descuento 0..max (en S NO existe sup input)
-    const v = dn_validarHoras(descVal, 0, max); // desc + 0 <= max
+    const supVal = Number(_mjTempSup) || 0;
+
+    // Validación (SUP + DESC <= MAX)
+    const v = dn_validarHoras(descVal, supVal, max);
     if (!v.ok) {
       _mjMostrarMsg(v.msg);
       return;
@@ -1869,14 +1951,11 @@ _mjEl("mjOk").addEventListener("click", () => {
       return;
     }
 
-    const supCalc = Math.max(0, max - descVal);
+    const crCalc = Math.max(0, max - supVal - descVal);
 
-    j.crupier = 0;
-    j.supervisor = supCalc;
-
-    // Regla DÍA VACÍO (normal 0/max) en S: si queda igual al default, no guardamos registro
-    const defS = DIA_DEFAULT(); // {cr:0, sup:max}
-    if (tipo === "normal" && j.crupier === defS.cr && j.supervisor === defS.sup) {
+    // Regla DÍA VACÍO (normal 8/0)
+    const defCS = DIA_DEFAULT();
+    if (tipo === "normal" && crCalc === defCS.cr && supVal === defCS.sup) {
       removeJornadaAtIndex(_mjIndexActual);
       guardarJornadas();
       cerrarModalJornada();
@@ -1884,94 +1963,15 @@ _mjEl("mjOk").addEventListener("click", () => {
       return;
     }
 
+    // Guardar jornada (modelo REAL)
+    // BASE = CR + SUP + DESC
+    j.crupier = crCalc;
+    j.supervisor = supVal;
+
     guardarJornadas();
     cerrarModalJornada();
     renderCalendar();
-    return;
-  }
-
-  // ===============================
-  // CS: PASO SUPERVISOR (1)  — primero
-  // ===============================
-  if (_mjPaso === "sup") {
-    const supTxt = (supInp.value || "").trim().replace(",", ".");
-    const supVal = supTxt === "" ? 0 : Number(supTxt);
-
-    // Validación básica (solo SUP)
-    const vSup = dn_validarHoras(0, supVal, max);
-    if (!vSup.ok) {
-      _mjMostrarMsg(vSup.msg);
-      return;
-    }
-
-    // Si SUP completa la jornada: termina acá (no pedir descuento)
-    if (supVal >= max) {
-      j.crupier = 0;
-      j.supervisor = max;
-
-      guardarJornadas();
-      cerrarModalJornada();
-      renderCalendar();
-      return;
-    }
-
-    // SUP parcial: pasar a DESCUENTO
-    _mjTempSup = supVal;
-
-    // Default del descuento: saldo restante (BASE - SUP)
-    const descDefault = Math.max(0, max - supVal);
-    descInp.value = String(descDefault);
-
-    _mjMostrarMsg("");
-
-    _mjSetPaso("desc");
-    return;
-  }
-
-  // ===============================
-  // CS: PASO DESCUENTO (2)
-  // ===============================
-  const descTxt = (descInp.value || "").trim().replace(",", ".");
-  const descVal = descTxt === "" ? 0 : Number(descTxt);
-
-  const supVal = Number(_mjTempSup) || 0;
-
-  // Validación (SUP + DESC <= MAX)
-  const v = dn_validarHoras(descVal, supVal, max);
-  if (!v.ok) {
-    _mjMostrarMsg(v.msg);
-    return;
-  }
-
-  // Normal / Libre trabajado: no puede ser 0 horas trabajadas (descuento completo)
-  if ((tipo === "normal" || tipo === "libreTrabajado") && descVal >= max) {
-    _mjMostrarMsg(
-      "No podés marcar Normal/Libre trabajado si no trabajó horas (descuento completo)."
-    );
-    return;
-  }
-
-  const crCalc = Math.max(0, max - supVal - descVal);
-
-  // Regla DÍA VACÍO (normal 8/0)
-  const defCS = DIA_DEFAULT();
-  if (tipo === "normal" && crCalc === defCS.cr && supVal === defCS.sup) {
-    removeJornadaAtIndex(_mjIndexActual);
-    guardarJornadas();
-    cerrarModalJornada();
-    renderCalendar();
-    return;
-  }
-
-  // Guardar jornada (modelo REAL)
-  // BASE = CR + SUP + DESC
-  j.crupier = crCalc;
-  j.supervisor = supVal;
-
-  guardarJornadas();
-  cerrarModalJornada();
-  renderCalendar();
-});
+  });
 
 
 
