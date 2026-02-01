@@ -414,4 +414,87 @@
 #sumQuincenaText {
   white-space: pre-line;
 }
+/* ===============================
+   NUEVOS ESTILOS PARA TABS Y SECCIONES (para organización y evitar apretujamiento)
+   =============================== */
 
+/* General: Mejora legibilidad para usuarios mayores */
+body {
+    font-size: 1.1em; /* Texto más grande (complementa tus estilos existentes) */
+    line-height: 1.5; /* Espacio entre líneas */
+}
+
+.container {
+    max-width: 800px; /* Limita ancho para no estirar en pantallas grandes */
+}
+
+/* Tabs: Botones grandes y centrados */
+.tabs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px; /* Espacio abajo */
+}
+
+.tabs button {
+    background-color: #4CAF50; /* Verde amigable */
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    font-size: 1.2em; /* Grande para toque en móvil */
+    cursor: pointer;
+    border-radius: 5px; /* Suavizado, compatible con tus 10px/12px */
+    transition: background-color 0.3s;
+}
+
+.tabs button:hover {
+    background-color: #45a049; /* Hover sutil */
+}
+
+/* Secciones (tab-content): Espacio y bordes suaves */
+.tab-content {
+    background-color: #f8f9fa; /* Fondo claro (Bootstrap-compatible) */
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px; /* Espacio entre secciones */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Sombra ligera para profundidad */
+}
+
+/* Calendario: Mejoras para resalte de quincenas y espacio */
+.cal-grid div { /* Cada celda - aumenta espacio */
+    min-height: 90px; /* Más alto para no apretujar en móvil (complementa tu min-height: 78px) */
+    padding: 10px; /* Padding extra */
+}
+
+/* Resalte de Quincenas (usando data attributes - setea en JS) */
+.cal-grid div[data-quincena="1"] { /* Días 1-14 */
+    background-color: rgba(34, 197, 94, .10); /* Verde suave, similar a tu q1 */
+    border-color: rgba(34, 197, 94, .35);
+}
+
+.cal-grid div[data-quincena="2"] { /* Días 15-fin */
+    background-color: rgba(234, 179, 8, .12); /* Amarillo suave, similar a tu q2 */
+    border-color: rgba(234, 179, 8, .40);
+}
+
+/* Responsive: Para móvil (evita apretujamiento, complementa tus media queries) */
+@media (max-width: 600px) {
+    .tabs {
+        flex-direction: column; /* Stack tabs verticalmente */
+        gap: 15px;
+    }
+
+    .tabs button {
+        width: 100%; /* Full-width para toque fácil */
+        padding: 15px;
+    }
+
+    .tab-content {
+        padding: 15px; /* Menos padding pero más espacio vertical */
+    }
+
+    .cal-grid {
+        gap: 8px; /* Más gap en móvil para respirar */
+        font-size: 0.95em;
+    }
+}
