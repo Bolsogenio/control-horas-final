@@ -475,3 +475,11 @@
     font-size: 14px !important; 
   }
 }
+h1{
+  font-size: 50px;
+  text-align: center;
+}
+.cal-summary{
+  font-size: 20px;
+  margin: 0;
+}
