@@ -368,7 +368,7 @@ function renderCalendarGrid() {
     const fechaKey = dn_toISODate(d);
 
     const today = getToday();
-    const esFuturo = d > today;
+    const esFuturo = d >= today;
 
     if (!esFuturo) {
       cell.addEventListener("click", () => {
