@@ -430,3 +430,48 @@
   white-space: pre-line;
 }
 
+
+/* ===============================
+   ADAPTACIÓN PARA MÓVILES (PWA) - VERSIÓN SEGURA
+   =============================== */
+@media (max-width: 768px) {
+  /* Forzamos a que el contenedor no se salga de la pantalla */
+  .cal-grid, .cal-weekdays {
+    width: 100% !important;
+    gap: 2px !important;
+  }
+
+  .cal-cell {
+    min-height: 60px !important;
+    padding: 2px !important;
+    border-radius: 4px !important;
+    /* ESTO ES CLAVE: Evita que el texto rompa el cuadro y lo haga desaparecer */
+    min-width: 0 !important; 
+    overflow: hidden !important;
+  }
+
+  .cal-daynum {
+    font-size: 12px !important;
+    text-align: center !important;
+  }
+
+  .cal-summary {
+    font-size: 9px !important;
+    margin-top: 2px !important;
+    text-align: center !important;
+    /* Corta las palabras largas a la fuerza para que no rompan la pantalla */
+    word-wrap: break-word !important;
+    overflow-wrap: break-word !important;
+    hyphens: auto !important;
+    line-height: 1 !important;
+  }
+
+  .cal-header button {
+    min-width: 40px !important;
+    min-height: 40px !important;
+  }
+  
+  .cal-title {
+    font-size: 14px !important; 
+  }
+}
