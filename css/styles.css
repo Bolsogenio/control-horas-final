@@ -132,6 +132,21 @@
 .cal-cell.q1 { border-color: rgba(34, 197, 94, .35); }
 .cal-cell.q2 { border-color: rgba(234, 179, 8, .40); }
 
+/* Estilos para los días futuros en el calendario */
+.cal-cell.future {
+  filter: blur(2px); /* Esto hace que el contenido se vea borroso */
+  opacity: 0.5; /* Esto lo hace ver un poco transparente/apagado */
+  pointer-events: none; /* Bloquea cualquier intento de clic por seguridad */
+  cursor: not-allowed; /* Muestra el cursor de "prohibido" si pasas el mouse */
+  background-color: rgba(200, 200, 200, 0.2); /* Opcional: le da un fondito gris */
+}
+
+/* Para asegurarnos de que los números y textos internos también se opaquen */
+.cal-cell.future .cal-daynum,
+.cal-cell.future .cal-summary {
+  user-select: none; /* Evita que el usuario pueda seleccionar el texto borroso */
+}
+
 
 .cal-header{
   display: flex;
