@@ -344,7 +344,7 @@ function renderCalendarGrid() {
   const startOffset = firstDay.getDay(); // 0 = domingo
   const startDate = dn_addDays(firstDay, -startOffset);
 
-  for (let i = 1; i <= 42; i++) {
+  for (let i = 0; i < 42; i++) {
     const d = dn_addDays(startDate, i);
     const cell = document.createElement("div");
     cell.className = "cal-cell";
