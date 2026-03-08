@@ -402,7 +402,7 @@
   /* Calendario */
   .cal-grid { grid-auto-rows: 82px; }
   .cal-daynum { font-size: 16px; }
-  .cal-summary { font-size: 17px; line-height: 1.2; }
+  .cal-summary { font-size: 13px; line-height: 1.2; }
 
   /* Modal Jornada: inputs más grandes */
   .mj-label { font-size: 14px; }
@@ -456,7 +456,7 @@
   }
 
   .cal-summary {
-    font-size: 9px !important;
+    font-size: 13px !important;
     margin-top: 2px !important;
     text-align: center !important;
     /* Corta las palabras largas a la fuerza para que no rompan la pantalla */
